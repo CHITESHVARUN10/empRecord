@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import express from 'express';
 import { createServer } from 'node:http';
 import { env } from './src/config/env.js';
 import { connectDb, disconnectDb } from './src/config/db.js';
@@ -14,7 +15,8 @@ if (env.SEED_ADMIN_ON_START) {
   await seedAdminOnStart();
 }
 
-const app = createApp();
+const app = express();
+createApp(express, app);
 
 export default app;
 

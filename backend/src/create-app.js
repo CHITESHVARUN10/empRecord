@@ -1,4 +1,4 @@
-import express from "express";
+import expressDefault from "express";
 import helmet from "helmet";
 import cors from "cors";
 import session from "express-session";
@@ -13,8 +13,7 @@ import { authRoutes } from "./routes/auth.routes.js";
 import { publicRoutes } from "./routes/public.routes.js";
 import { adminRoutes } from "./routes/admin.routes.js";
 import { internalRoutes, uploadRoutes } from "./routes/upload.routes.js";
-function createApp() {
-  const app = express();
+function createApp(express = expressDefault, app = express()) {
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
   app.use(
