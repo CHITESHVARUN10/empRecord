@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+backend/bpin-employee-records-*.json
+.DS_Store
+*.log
+.vite/
+.tsbuildinfo
+.uploads/

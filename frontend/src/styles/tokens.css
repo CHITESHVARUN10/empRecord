@@ -1,0 +1,73 @@
+:root {
+  color-scheme: light;
+
+  --font-ui: 'Public Sans Variable', 'Public Sans', system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Newsreader Variable', 'Newsreader', Georgia, 'Times New Roman',
+    serif;
+
+  --canvas: oklch(0.965 0.01 85);
+  --canvas-deep: oklch(0.94 0.014 85);
+  --surface: oklch(0.998 0.002 85);
+  --surface-2: oklch(0.982 0.006 85);
+  --surface-3: oklch(0.958 0.009 85);
+
+  --ink: oklch(0.225 0.015 250);
+  --ink-soft: oklch(0.36 0.014 250);
+  --muted: oklch(0.505 0.012 250);
+  --muted-2: oklch(0.63 0.01 250);
+
+  --line: oklch(0.885 0.008 250);
+  --line-strong: oklch(0.79 0.012 250);
+
+  --brand: oklch(0.43 0.105 232);
+  --brand-strong: oklch(0.35 0.095 232);
+  --brand-soft: oklch(0.945 0.028 232);
+  --brand-bright: oklch(0.7 0.135 230);
+  --brand-ink: oklch(0.28 0.07 232);
+
+  --accent: oklch(0.62 0.085 75);
+  --accent-soft: oklch(0.955 0.035 80);
+
+  --danger: oklch(0.5 0.16 27);
+  --danger-strong: oklch(0.42 0.15 27);
+  --danger-soft: oklch(0.96 0.028 27);
+
+  --success: oklch(0.43 0.09 155);
+  --success-soft: oklch(0.955 0.026 155);
+
+  --warning: oklch(0.56 0.11 70);
+  --warning-soft: oklch(0.965 0.03 80);
+
+  --focus: oklch(0.55 0.14 232);
+
+  --sidebar: oklch(0.205 0.018 250);
+  --sidebar-2: oklch(0.245 0.02 250);
+  --sidebar-ink: oklch(0.95 0.006 85);
+  --sidebar-muted: oklch(0.72 0.01 250);
+  --sidebar-line: oklch(0.33 0.015 250);
+
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --shadow-dialog: 0 24px 64px -24px oklch(0.2 0.02 250 / 0.38),
+    0 3px 10px oklch(0.2 0.02 250 / 0.08);
+  --shadow-bar: 0 12px 32px -20px oklch(0.2 0.02 250 / 0.4);
+
+  --rail-width: 292px;
+  --form-width: 868px;
+  --container: 1240px;
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration: 180ms;
+}

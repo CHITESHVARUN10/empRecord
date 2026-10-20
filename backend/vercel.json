@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd .. && npm ci --include=dev",
+  "buildCommand": "cd .. && npm run build -w backend",
+  "functions": {
+    "api/[...path].ts": {
+      "maxDuration": 300,
+      "memory": 1024
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/internal/cleanup-uploads",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

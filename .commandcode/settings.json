@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(node -v; npm -v; echo '---'; which pdftocairo pdftoppm sips magick convert 2>/dev/null; echo '---'; pgrep -fl mongod || true; echo '---'; git status --short 2>/dev/null || echo 'not a git repo')",
+      "Shell(echo '--- root package.json'; cat package.json; echo '--- .gitignore'; cat .gitignore; echo '--- workspace node_modules'; for d in node_modules backend/node_modules frontend/node_modules shared/node_modules; do if [ -d \"$d\" ]; then echo \"$d exists ($(find \"$d\" -maxdepth 1 -mindepth 1 | wc -l | tr -d ' ') entries)\"; else echo \"$d absent\"; fi; done; echo '--- shared refs'; grep -R \"@bpi/shared\" -n backend/src frontend/src shared/src backend/tsup.config.ts 2>/dev/null | head -20; echo '--- built output'; ls -la backend/dist frontend/dist 2>/dev/null | head -30)",
+      "Shell(ls -la node_modules/@bpi 2>/dev/null; readlink node_modules/@bpi/shared 2>/dev/null || true; echo '--- resolves'; node --input-type=module -e \"import('@bpi/shared').then(m=>console.log('shared exports:', Object.keys(m).slice(0,12).join(', ')))\")"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

@@ -1,0 +1,26 @@
+# Taste Profile
+- Wants the full system planned out before any code is written ("plan everything out"), including data model, API surface, and deferred items. Confidence: 0.75
+- Comfortable deferring a genuinely hard sub-problem (e.g. signed/private-file CSV links) to "we'll sort it out later" as long as the rest ships complete. Confidence: 0.6
+- Explicitly rejects interfaces that look like "AI slop", vibe-coded, or generated — expects the UI to look intentional, brand-anchored (use the real company logo), and professional. Confidence: 0.85
+- Default stack for full-stack apps: React on the frontend, Node.js as backend language, MongoDB as the database. Confidence: 0.7
+- Prefers Passport.js with the local strategy plus session-based auth for admin-only login, rather than rolling custom auth. Confidence: 0.6
+- Prefers Vercel Blob (private store, token via env) for file storage, but wants files uploaded directly from the browser to the blob store — not relayed through the Node backend — so hosting-platform request-body limits (Vercel's 4.5 MB) never apply; multer is acceptable only for local/dev storage. Confidence: 0.75
+- Plans to deploy the frontend and backend as separate apps (different hosts/domains), so any repo layout — monorepo, workspaces, shared packages — must survive split hosting and be documented as such. Confidence: 0.8
+- Final target is both apps on Vercel as two independent projects from the same repo (separate Root Directory + per-project `vercel.json` each), explicitly not one combined/multi-app Vercel deployment. Confidence: 0.8
+- Cares about real-device auth behavior: sessions/cookies must work on iOS/Safari, so avoid third-party cross-origin cookie setups and prefer a first-party `/api` proxy from the frontend origin. Confidence: 0.8
+- Backend environment variables/secrets must never be copied into the frontend project; the frontend should reach the API same-origin (proxy/rewrite) rather than carry backend config in `VITE_*`. Confidence: 0.75
+- After QA, wants all test data and leftovers wiped (employees, sessions, jobs, stored files, local uploads) and servers stopped — hand over a clean, deploy-ready state. Confidence: 0.7
+- Wants a clean, deployment-ready repo root: questions unexplained artifacts (hoisted `node_modules`, root lockfile/tsconfig) rather than silently accepting them, and expects them to be either justified or removed. Confidence: 0.65
+- Verifies architecture claims instead of taking them on trust ("are you sure?" about shared code causing deploy conflicts) — answers should be backed by actual inspection of manifests/build output. Confidence: 0.65
+- Develops against local MongoDB (localhost) first and switches to a hosted/managed instance (Atlas) later, keeping the change to a single connection-string env var. Confidence: 0.6
+- Expects apps to be genuinely responsive/mobile-friendly, not just desktop-working — asks for a real responsive pass and expects it verified at small phone through desktop widths (320/390 up to 1280). Confidence: 0.8
+- Prefers constrained inputs over free text when the data has a canonical set: dependent dropdowns (city limited to the selected state's cities), state changes clearing stale dependent values, and the same rule enforced server-side. Confidence: 0.7
+- Prefers contextual, inline help over docs or long hint paragraphs: a small icon (e.g. eye) next to the label with a hover/focus/tap popover. Help affordances must work on mobile via tap, not hover-only. Confidence: 0.65
+- Wants truly optional fields to be optional end-to-end (form, validation, model, export, display) and marked as "Optional" rather than silently required. Confidence: 0.7
+- Expects design decisions to respect the hosting platform's hard limits (body-size caps, serverless constraints) and to pick an architecture that sidesteps them rather than hitting them in production. Confidence: 0.7
+- Insists failures must never cost the user their work: if an upload or the final submit fails, the form must be saved as a draft and the retry must redo only the failed step (no re-typing fields, ideally no re-selecting files). Confidence: 0.8
+- Wants the form entry and its uploaded files treated as one linked unit — neither should be persisted without the other, and stray/orphaned files should be cleaned up rather than left behind. Confidence: 0.65
+- Expects explicit, honest error prompts to the user when something fails server-side ("something happened on our server"), not silent failure. Confidence: 0.6
+- Expects exhaustive end-to-end verification of every endpoint after a change ("test every aspect… every endpoint"), explicitly including file upload and authenticated file retrieval — typecheck/build passing is not treated as proof that the feature works. Confidence: 0.75
+- New data fields with a small canonical set should be added as a dropdown with exactly those options (e.g. an "organization" select with two options) rather than free text. Confidence: 0.75
+- Asks deployment-configuration questions before shipping — which env vars belong on which host, and whether secrets (e.g. the blob read/write token) would have to leak into the frontend bundle; expects secrets to stay server-side and the answer to be stated plainly. Confidence: 0.65
