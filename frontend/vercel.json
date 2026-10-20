@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://YOUR-BACKEND.vercel.app/api/$1"
+      "destination": "https://bpin-emp-record-backend.vercel.app/api/$1"
     },
     {
       "source": "/(.*)",

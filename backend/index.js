@@ -4,7 +4,7 @@ import { env } from './src/config/env.js';
 import { connectDb, disconnectDb } from './src/config/db.js';
 import { seedAdminOnStart } from './src/services/admin-seed.service.js';
 import { cleanupUploadSessions } from './src/services/upload-session.service.js';
-import { createApp } from './src/app.js';
+import { createApp } from './src/create-app.js';
 
 const isVercel = Boolean(process.env.VERCEL);
 
