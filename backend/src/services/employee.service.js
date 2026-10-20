@@ -53,6 +53,9 @@ function normalizeEmployeeInput(input) {
   };
 }
 function conflictMessage(field) {
+  if (field === "employeeCode") {
+    return "Employee code is already used by an existing record in this organization.";
+  }
   return `${DUPLICATE_FIELD_LABELS[field]} is already used by an existing record.`;
 }
 async function findDuplicateConflicts(input, excludeId) {
@@ -62,7 +65,12 @@ async function findDuplicateConflicts(input, excludeId) {
   const officeMobile = input.officeMobile ? normalizeMobile(input.officeMobile) : "";
   const mobileValues = [...new Set([personalMobile, officeMobile].filter(Boolean))];
   const conditions = [];
-  if (code) conditions.push({ employeeCode: code });
+  if (code && input.organization) {
+    conditions.push({
+      organization: input.organization,
+      employeeCode: code
+    });
+  }
   if (email) conditions.push({ personalEmail: email });
   if (mobileValues.length) {
     conditions.push({ personalMobile: { $in: mobileValues } });
@@ -73,10 +81,15 @@ async function findDuplicateConflicts(input, excludeId) {
   if (excludeId) {
     filter._id = { $ne: new Types.ObjectId(excludeId) };
   }
-  const matches = await EmployeeModel.find(filter).select("employeeCode personalEmail personalMobile officeMobile").lean();
+  const matches = await EmployeeModel.find(filter).select("employeeCode organization personalEmail personalMobile officeMobile").lean();
   const conflicts = /* @__PURE__ */ new Set();
   for (const match of matches) {
-    if (code && match.employeeCode === code) {
+    if (
+      code &&
+      input.organization &&
+      match.organization === input.organization &&
+      match.employeeCode === code
+    ) {
       conflicts.add("employeeCode");
     }
     if (email && match.personalEmail === email) {

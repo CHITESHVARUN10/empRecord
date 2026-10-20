@@ -10,6 +10,7 @@ import { CloudUpload, Download, Search, X } from 'lucide-react';
 import {
   ADMIN_SORT_FIELDS,
   DEPARTMENTS,
+  ORGANIZATIONS,
   type AdminSortField,
 } from '@bpi/shared';
 import { Banner } from '../../components/Banner';
@@ -37,6 +38,7 @@ export default function DashboardPage() {
 
   const search = params.get('search') ?? '';
   const department = params.get('department') ?? '';
+  const organization = params.get('organization') ?? '';
   const page = Math.max(1, Number(params.get('page') ?? '1') || 1);
   const sort = asSort(params.get('sort'));
   const order = params.get('order') === 'asc' ? 'asc' : 'desc';
@@ -65,10 +67,11 @@ export default function DashboardPage() {
     return () => window.clearTimeout(timer);
   }, [searchInput, search, setParams]);
 
-  const filters = { search, department, page, sort, order };
+  const filters = { search, department, organization, page, sort, order };
   const query = new URLSearchParams();
   if (search) query.set('search', search);
   if (department) query.set('department', department);
+  if (organization) query.set('organization', organization);
   query.set('page', String(page));
   query.set('limit', '20');
   query.set('sort', sort);
@@ -135,6 +138,7 @@ export default function DashboardPage() {
       const exportQuery = new URLSearchParams();
       if (search) exportQuery.set('search', search);
       if (department) exportQuery.set('department', department);
+      if (organization) exportQuery.set('organization', organization);
       const suffix = exportQuery.toString();
       return apiFetchBlob(
         `/api/admin/export.csv${suffix ? `?${suffix}` : ''}`,
@@ -154,7 +158,7 @@ export default function DashboardPage() {
     },
   });
 
-  const hasFilters = Boolean(search || department);
+  const hasFilters = Boolean(search || department || organization);
   const total = employeesQuery.data?.total ?? 0;
 
   function updateParam(key: string, value: string) {
@@ -177,6 +181,7 @@ export default function DashboardPage() {
         const next = new URLSearchParams(current);
         next.delete('search');
         next.delete('department');
+        next.delete('organization');
         next.set('page', '1');
         return next;
       },
@@ -378,6 +383,22 @@ export default function DashboardPage() {
         <div className="admin-toolbar__right">
           <select
             className="select admin-department-filter"
+            value={organization}
+            onChange={(event) =>
+              updateParam('organization', event.target.value)
+            }
+            aria-label="Filter by organization"
+          >
+            <option value="">All organizations</option>
+            {ORGANIZATIONS.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="select admin-department-filter"
             value={department}
             onChange={(event) =>
               updateParam('department', event.target.value)
@@ -444,7 +465,7 @@ export default function DashboardPage() {
         hasFilters ? (
           <EmptyState
             title="No records match these filters"
-            description="Try a different search term or clear the department filter."
+            description="Try a different search term or clear the organization and department filters."
             action={
               <button
                 type="button"

@@ -126,6 +126,7 @@ employeeSchema.index({ createdAt: -1 });
 employeeSchema.pre("validate", function() {
   this.identifiers = buildIdentifiers({
     employeeCode: this.employeeCode,
+    organization: this.organization,
     personalEmail: this.personalEmail,
     personalMobile: this.personalMobile,
     officeMobile: this.officeMobile

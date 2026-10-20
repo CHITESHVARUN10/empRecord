@@ -3,7 +3,8 @@ import { z } from "zod";
 import {
   ADMIN_SORT_FIELDS,
   ATTACHMENT_KINDS,
-  DEPARTMENTS
+  DEPARTMENTS,
+  ORGANIZATIONS
 } from '#shared';
 import { env } from "../config/env.js";
 import { EmployeeModel } from "../models/Employee.js";
@@ -38,6 +39,7 @@ import {
 const listQuerySchema = z.object({
   search: z.string().max(80).trim().optional().default(""),
   department: z.enum(DEPARTMENTS).optional(),
+  organization: z.enum(ORGANIZATIONS).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   sort: z.enum(ADMIN_SORT_FIELDS).default("createdAt"),
@@ -45,7 +47,8 @@ const listQuerySchema = z.object({
 });
 const exportQuerySchema = z.object({
   search: z.string().max(80).trim().optional().default(""),
-  department: z.enum(DEPARTMENTS).optional()
+  department: z.enum(DEPARTMENTS).optional(),
+  organization: z.enum(ORGANIZATIONS).optional()
 });
 const idSchema = z.string().regex(/^[a-fA-F0-9]{24}$/);
 const kindSchema = z.enum(ATTACHMENT_KINDS);
@@ -86,9 +89,10 @@ function parseOrThrow(schema, value) {
   }
   return result.data;
 }
-function listFilter(search, department) {
+function listFilter(search, department, organization) {
   const filter = buildEmployeeSearchFilter(search);
   if (department) filter.department = department;
+  if (organization) filter.organization = organization;
   return filter;
 }
 function contentDisposition(originalName, mode) {
@@ -116,7 +120,11 @@ adminRoutes.post("/employees/:id/upload-sessions", async (request, response) => 
 });
 adminRoutes.get("/employees", async (request, response) => {
   const query = parseOrThrow(listQuerySchema, request.query);
-  const filter = listFilter(query.search, query.department);
+  const filter = listFilter(
+    query.search,
+    query.department,
+    query.organization
+  );
   const skip = (query.page - 1) * query.limit;
   const sort = {
     [query.sort]: query.order === "asc" ? 1 : -1,
@@ -315,7 +323,11 @@ adminRoutes.get("/stats", async (_request, response) => {
 });
 adminRoutes.get("/export.csv", async (request, response) => {
   const query = parseOrThrow(exportQuerySchema, request.query);
-  const filter = listFilter(query.search, query.department);
+  const filter = listFilter(
+    query.search,
+    query.department,
+    query.organization
+  );
   const employees = await EmployeeModel.find(filter).sort({ createdAt: -1 }).lean();
   const csv = buildEmployeeCsv(employees, env.PUBLIC_API_URL);
   const filename = `blaupunkt-employee-records-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.csv`;

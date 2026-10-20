@@ -266,6 +266,7 @@ export type EmployeeInput = z.infer<typeof employeeSchema>;
 export const duplicateCheckSchema = z
   .object({
     employeeCode: z.string().max(30).optional(),
+    organization: z.enum(ORGANIZATIONS).optional(),
     personalEmail: z.string().max(120).optional(),
     personalMobile: z.string().max(20).optional(),
     officeMobile: z.string().max(20).optional(),

@@ -430,11 +430,19 @@ export function PublicFormPage() {
     const values = getValues();
     const payload = {
       employeeCode: values.employeeCode.trim() || undefined,
+      organization: values.organization || undefined,
       personalEmail: values.personalEmail.trim() || undefined,
       personalMobile: values.personalMobile.trim() || undefined,
       officeMobile: values.officeMobile.trim() || undefined,
     };
-    if (!Object.values(payload).some(Boolean)) {
+    if (
+      ![
+        payload.employeeCode,
+        payload.personalEmail,
+        payload.personalMobile,
+        payload.officeMobile,
+      ].some(Boolean)
+    ) {
       setConflicts([]);
       return;
     }
@@ -458,6 +466,19 @@ export function PublicFormPage() {
       void runDuplicateCheck();
     }, 500);
   }, [runDuplicateCheck]);
+
+  useEffect(() => {
+    if (!draftReady || lastSubmission) return;
+    setConflicts((current) =>
+      current.filter((conflict) => conflict.field !== 'employeeCode'),
+    );
+    scheduleDuplicateCheck();
+  }, [
+    watchedValues.organization,
+    draftReady,
+    lastSubmission,
+    scheduleDuplicateCheck,
+  ]);
 
   function scrollToField(field: string) {
     document

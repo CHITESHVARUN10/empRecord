@@ -81,7 +81,7 @@ describe("employee duplicate handling", () => {
     expect(second.employeeCode).toBe("");
     expect(await EmployeeModel.countDocuments({})).toBe(2);
   });
-  it("blocks a duplicate employee code", async () => {
+  it("blocks a duplicate employee code in the same organization", async () => {
     await create();
     await expect(
       create(
@@ -99,6 +99,29 @@ describe("employee duplicate handling", () => {
         expect.objectContaining({ field: "employeeCode" })
       ])
     });
+  });
+  it("allows the same employee code in a different organization", async () => {
+    const first = await create(
+      validEmployee({ employeeCode: "E001" })
+    );
+    const second = await create(
+      validEmployee({
+        employeeCode: "E001",
+        organization: "AUTO SONICS INDIA PRIVATE LIMITED",
+        personalEmail: "second@example.com",
+        personalMobile: "9876500011",
+        officeMobile: "9876500012",
+        officeEmail: "second.office@example.com"
+      })
+    );
+    expect(first.employeeCode).toBe("E001");
+    expect(second.employeeCode).toBe("E001");
+    expect(second.organization).toBe(
+      "AUTO SONICS INDIA PRIVATE LIMITED"
+    );
+    expect(
+      await EmployeeModel.countDocuments({ employeeCode: "E001" })
+    ).toBe(2);
   });
   it("blocks a duplicate personal email", async () => {
     await create();
@@ -153,6 +176,7 @@ describe("employee duplicate handling", () => {
     const conflicts = await findDuplicateConflicts(
       {
         employeeCode: employee.employeeCode,
+        organization: employee.organization,
         personalEmail: employee.personalEmail,
         personalMobile: employee.personalMobile,
         officeMobile: employee.officeMobile

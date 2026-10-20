@@ -7,18 +7,19 @@ An internal employee data collection system for Blaupunkt. Employees submit thei
 - Public employee form with all fields from `Employee Master Creation Form.xlsx`.
 - Server-side and client-side validation, including Indian mobile, PIN, PAN, and Aadhaar rules.
 - Optional employee code (excluded from duplicate checks when blank) and a required Organization selector with BPIN PRIVATE LIMITED and AUTO SONICS INDIA PRIVATE LIMITED.
-- Duplicate protection on employee code, personal email, personal mobile, and office mobile.
+- Employee codes are unique within an organization; the same code can exist in different organizations.
+- Duplicate protection on employee code (per organization), personal email, personal mobile, and office mobile.
 - State-filtered city dropdowns, an optional joining date, and an employee-code helper hint.
 - Automatic local draft saving, including form values, selected files, upload-session state, and confirmed document metadata.
 - Direct browser-to-Vercel-Blob uploads in production with short-lived scoped tokens; no document bytes pass through the API.
 - Upload sessions linked to a pre-generated employee record, with retry, resume, duplicate rescue, and abandoned-upload cleanup.
-- Admin-only portal with search, filters, sorting, pagination, counts, record detail, edit, CSV export, Drive upload, and permanent record deletion with typed confirmation.
+- Admin-only portal with search, organization and department filters, sorting, pagination, counts, record detail, edit, CSV export, Drive upload, and permanent record deletion with typed confirmation.
 - Private document storage in Vercel Blob under `EMP records/<employeeId>/`, served to admins only through an authenticated backend proxy.
 - Incremental Google Drive sync that creates `EMP records/<employee folder>` in the shared drive, copies only new or changed employee documents, uploads a master CSV, and stores Drive links for the CSV export.
 - Background Drive-sync jobs with live progress, polling, resume-after-reload, and skipped-file reporting.
 - A development-only local file driver so the app can run without a Blob token.
 - REST API built with Express, MongoDB, Passport local auth, and session storage in MongoDB.
-- 47 backend tests covering validation, identifiers, upload sessions, file signatures, CSV export, Drive links, and duplicate handling.
+- 49 backend tests covering validation, identifiers, organization-scoped employee codes, upload sessions, file signatures, CSV export, Drive links, and duplicate handling.
 
 ## Tech stack
 
@@ -240,7 +241,7 @@ The following identifiers must each be unique across employees:
 - Personal mobile
 - Office mobile
 
-Employee code is optional. Multiple employees can have no code, and blank codes are skipped by duplicate checks. Organization is required for new submissions; existing records created before this field was added show a blank organization until an administrator assigns one on the edit screen.
+Employee code is optional. Multiple employees can have no code, and blank codes are skipped by duplicate checks. When a code is present, it is unique within its organization but can be reused in the other organization. Organization is required for new submissions; existing records created before this field was added show a blank organization until an administrator assigns one on the edit screen.
 
 Office email is intentionally allowed to repeat because shared inboxes are common.
 
@@ -269,7 +270,7 @@ A unique multikey index on the normalized identifiers enforces the same rule at 
 
 ## CSV export
 
-The export includes every form field, including Organization, a `Google Drive Folder` column, and the Aadhaar/PAN/passport attachment links. It is UTF-8 with a BOM so Excel opens Indian characters correctly, uses `DD-MM-YYYY` dates, escapes commas and newlines, and prefixes formula-leading cells to prevent CSV injection.
+The export includes every form field, including Organization, a `Google Drive Folder` column, and the Aadhaar/PAN/passport attachment links. It honours the active search, organization, and department filters. It is UTF-8 with a BOM so Excel opens Indian characters correctly, uses `DD-MM-YYYY` dates, escapes commas and newlines, and prefixes formula-leading cells to prevent CSV injection.
 
 After clicking **Upload to Google Drive**, the attachment columns contain the Google Drive file links and `Google Drive Folder` contains the employee's Drive folder link. Unsynced attachments fall back to the authenticated API attachment route, which requires an active admin session. The master `Employee Records.csv` in Drive is generated from the same data and therefore also contains Drive links.
 
@@ -290,7 +291,7 @@ After clicking **Upload to Google Drive**, the attachment columns contain the Go
 | POST | `/api/uploads/local` | session-aware, dev only | Upload through the local development driver |
 | GET | `/api/uploads/sessions/:sessionId` | session-aware | Upload-session status and documents |
 | POST/GET | `/api/internal/cleanup-uploads` | cleanup secret | Delete expired/unlinked uploads; GET is used by Vercel Cron |
-| GET | `/api/admin/employees` | admin | List/search/filter/sort |
+| GET | `/api/admin/employees` | admin | List/search/filter/sort; `organization` and `department` filters |
 | GET | `/api/admin/employees/:id` | admin | Full record |
 | PATCH | `/api/admin/employees/:id` | admin | Edit record and replace documents |
 | GET | `/api/admin/employees/:id/attachments/:kind` | admin | Stream private document |
@@ -307,6 +308,7 @@ After clicking **Upload to Google Drive**, the attachment columns contain the Go
 |---|---|
 | `npm run dev` | Run the JavaScript API and web app together |
 | `npm run build` | Production build for the frontend |
+| `npm run build:shared -w backend` | Rebuild `backend/shared.js` after changing `shared/` |
 | `npm run typecheck` | Typecheck shared/frontend TypeScript |
 | `npm test` | Run the JavaScript backend tests |
 | `npm run seed:admin` | Create or update the admin account |

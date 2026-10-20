@@ -21,15 +21,31 @@ describe("identifier normalization", () => {
   it("builds code, personal email, and mobile identifiers", () => {
     const identifiers = buildIdentifiers({
       employeeCode: " bpi-007 ",
+      organization: "BPIN PRIVATE LIMITED",
       personalEmail: "Test@Example.com",
       personalMobile: "+91 98765 43210",
       officeMobile: "91234 56789"
     });
     expect(identifiers).toEqual([
-      "code:BPI-007",
+      "code:BPIN PRIVATE LIMITED:BPI-007",
       "email:test@example.com",
       "mobile:9876543210",
       "mobile:9123456789"
+    ]);
+  });
+  it("scopes employee-code identifiers to the organization", () => {
+    const first = buildIdentifiers({
+      employeeCode: "E001",
+      organization: "BPIN PRIVATE LIMITED"
+    });
+    const second = buildIdentifiers({
+      employeeCode: "E001",
+      organization: "AUTO SONICS INDIA PRIVATE LIMITED"
+    });
+    expect(first).not.toEqual(second);
+    expect(first).toEqual(["code:BPIN PRIVATE LIMITED:E001"]);
+    expect(second).toEqual([
+      "code:AUTO SONICS INDIA PRIVATE LIMITED:E001"
     ]);
   });
   it("does not include the office email in identifiers", () => {

@@ -1,4 +1,4 @@
-// shared/src/constants.ts
+// ../shared/src/constants.ts
 var ORGANIZATIONS = [
   "BPIN PRIVATE LIMITED",
   "AUTO SONICS INDIA PRIVATE LIMITED"
@@ -49,10 +49,10 @@ var ADMIN_SORT_FIELDS = [
   "department"
 ];
 
-// shared/src/employee-schema.ts
+// ../shared/src/employee-schema.ts
 import { z } from "zod";
 
-// shared/src/identifiers.ts
+// ../shared/src/identifiers.ts
 function normalizeCode(value) {
   return value.trim().toUpperCase();
 }
@@ -80,12 +80,12 @@ var DUPLICATE_FIELDS = [
   "personalMobile",
   "officeMobile"
 ];
-function identifierFor(field, value) {
+function identifierFor(field, value, organization) {
   if (!value) return null;
   switch (field) {
     case "employeeCode": {
       const normalized = normalizeCode(value);
-      return normalized ? `code:${normalized}` : null;
+      return normalized ? `code:${organization ? `${organization}:` : ""}${normalized}` : null;
     }
     case "personalEmail": {
       const normalized = normalizeEmail(value);
@@ -100,18 +100,22 @@ function identifierFor(field, value) {
 }
 function buildIdentifiers(input) {
   const identifiers = DUPLICATE_FIELDS.map(
-    (field) => identifierFor(field, input[field])
+    (field) => identifierFor(field, input[field], input.organization)
   ).filter((value) => Boolean(value));
   return [...new Set(identifiers)];
 }
 function identifiersForInput(input) {
   return DUPLICATE_FIELDS.flatMap((field) => {
-    const identifier = identifierFor(field, input[field]);
+    const identifier = identifierFor(
+      field,
+      input[field],
+      input.organization
+    );
     return identifier ? [{ field, identifier }] : [];
   });
 }
 
-// shared/src/data/india-locations.json
+// ../shared/src/data/india-locations.json
 var india_locations_default = {
   states: [
     {
@@ -4539,7 +4543,7 @@ var india_locations_default = {
   ]
 };
 
-// shared/src/locations.ts
+// ../shared/src/locations.ts
 var states = india_locations_default.states;
 var INDIA_STATES_WITH_CITIES = states;
 var INDIA_STATES = states.map((state) => state.name);
@@ -4560,7 +4564,7 @@ function isKnownState(state) {
   return INDIA_STATE_SET.has(state);
 }
 
-// shared/src/employee-schema.ts
+// ../shared/src/employee-schema.ts
 var NAME_RE = /^[\p{L}][\p{L}\s.'-]{1,99}$/u;
 var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 var CODE_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,29}$/;
@@ -4727,6 +4731,7 @@ var employeeSchema = z.object({
 });
 var duplicateCheckSchema = z.object({
   employeeCode: z.string().max(30).optional(),
+  organization: z.enum(ORGANIZATIONS).optional(),
   personalEmail: z.string().max(120).optional(),
   personalMobile: z.string().max(20).optional(),
   officeMobile: z.string().max(20).optional()

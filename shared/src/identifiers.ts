@@ -29,6 +29,7 @@ export function normalizeWhitespace(value: string): string {
 
 type IdentifierInput = {
   employeeCode?: string;
+  organization?: string;
   personalEmail?: string;
   personalMobile?: string;
   officeMobile?: string;
@@ -44,12 +45,15 @@ const DUPLICATE_FIELDS: DuplicateField[] = [
 export function identifierFor(
   field: DuplicateField,
   value: string | undefined,
+  organization?: string,
 ): string | null {
   if (!value) return null;
   switch (field) {
     case 'employeeCode': {
       const normalized = normalizeCode(value);
-      return normalized ? `code:${normalized}` : null;
+      return normalized
+        ? `code:${organization ? `${organization}:` : ''}${normalized}`
+        : null;
     }
     case 'personalEmail': {
       const normalized = normalizeEmail(value);
@@ -65,7 +69,7 @@ export function identifierFor(
 
 export function buildIdentifiers(input: IdentifierInput): string[] {
   const identifiers = DUPLICATE_FIELDS.map((field) =>
-    identifierFor(field, input[field]),
+    identifierFor(field, input[field], input.organization),
   ).filter((value): value is string => Boolean(value));
   return [...new Set(identifiers)];
 }
@@ -75,7 +79,11 @@ export function identifiersForInput(input: IdentifierInput): {
   identifier: string;
 }[] {
   return DUPLICATE_FIELDS.flatMap((field) => {
-    const identifier = identifierFor(field, input[field]);
+    const identifier = identifierFor(
+      field,
+      input[field],
+      input.organization,
+    );
     return identifier ? [{ field, identifier }] : [];
   });
 }
