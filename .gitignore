@@ -10,3 +10,4 @@ backend/bpin-employee-records-*.json
 .vite/
 .tsbuildinfo
 .uploads/
+HANDOFF.md

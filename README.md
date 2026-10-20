@@ -26,8 +26,8 @@ An internal employee data collection system for Blaupunkt. Employees submit thei
 |---|---|
 | Frontend | React 19, Vite, TypeScript, React Router, TanStack Query, React Hook Form, Zod |
 | Styling | Hand-written CSS with design tokens; self-hosted Public Sans and Newsreader |
-| Backend | Node.js, Express 5, TypeScript, Mongoose |
-| Database | MongoDB (local now, Atlas later) |
+| Backend | Node.js, Express 5, plain JavaScript ESM, Mongoose |
+| Database | MongoDB Atlas (local URI also supported) |
 | Auth | Passport local strategy, express-session, connect-mongo, bcryptjs |
 | Files | Direct browser uploads to a private Vercel Blob store; Multer only for the local development driver |
 | Google Drive | Service-account REST sync into a shared drive; no extra Google SDK dependency |
@@ -198,7 +198,7 @@ EMP records/
 
 For a 70-record sync followed by 10 new records, only the 10 new employees and their files are uploaded; the existing 70 are counted as skipped. Re-running is idempotent: the same employee folders, Drive files, and master CSV are updated instead of duplicated.
 
-Drive jobs run in the API process. On Vercel the job is kept alive with `waitUntil` within the configured function duration (`maxDuration: 300` in `backend/vercel.json`); on a persistent Node host it continues normally. For record sets that can exceed the function duration, move the job to a durable worker or process it in chunks. Jobs are retained in MongoDB for progress and status history.
+Drive jobs run in the API process. On Vercel the job is kept alive with `waitUntil` within the function duration (Vercel's default is 300 seconds); on a persistent Node host it continues normally. For record sets that can exceed the function duration, move the job to a durable worker or process it in chunks. Jobs are retained in MongoDB for progress and status history.
 
 Configuration:
 
@@ -305,10 +305,10 @@ After clicking **Upload to Google Drive**, the attachment columns contain the Go
 
 | Command | Purpose |
 |---|---|
-| `npm run dev` | Run API and web app together |
-| `npm run build` | Production builds for API and web |
-| `npm run typecheck` | Typecheck all workspaces |
-| `npm test` | Run backend tests |
+| `npm run dev` | Run the JavaScript API and web app together |
+| `npm run build` | Production build for the frontend |
+| `npm run typecheck` | Typecheck shared/frontend TypeScript |
+| `npm test` | Run the JavaScript backend tests |
 | `npm run seed:admin` | Create or update the admin account |
 | `npm run generate:locations` | Regenerate the India states/cities dataset |
 
@@ -316,14 +316,14 @@ After clicking **Upload to Google Drive**, the attachment columns contain the Go
 
 ```
 package.json / package-lock.json   npm workspaces manifest and single lockfile
-tsconfig.base.json                Shared TypeScript compiler options
-shared/                           Zod schemas, constants, identifier normalization, India locations
-backend/                          Express API, MongoDB models, Passport sessions, storage, CSV, tests
-frontend/                         React employee form and admin portal
+tsconfig.base.json                Shared TypeScript compiler options (frontend/shared only)
+shared/                           Zod schemas, constants, identifier normalization, India locations (TypeScript)
+backend/                          Self-contained Express API in plain JavaScript
+backend/index.js                  Vercel Express entrypoint; exports app, guards listen
+backend/shared.js                 Bundled runtime copy of shared/ for the backend
+backend/vercel.json               Express framework/region/cron config
+frontend/                         React employee form and admin portal (TypeScript)
 frontend/vercel.json              Vercel frontend project config and /api proxy
-backend/vercel.json               Vercel backend functions/cron config
-backend/api/[...path].js          Vercel catch-all API function
-backend/src/vercel.ts             Serverless API initializer
 asstes/                           Original Blaupunkt logo PDF
 ```
 
@@ -339,11 +339,19 @@ This repository is an npm **workspaces monorepo**:
 | `package-lock.json` | One lockfile for all three workspaces |
 | `tsconfig.base.json` | Shared TypeScript compiler options |
 | `node_modules/` | Hoisted local dependencies; gitignored and never deployed |
-| `shared/` | Imported as `@bpi/shared` by both applications |
+| `shared/` | Frontend TypeScript package; bundled into `backend/shared.js` for the backend |
 
-The `shared` package is build-time only. Vite bundles it into `frontend/dist`, and `tsup` bundles it into `backend/dist` (`noExternal: ['@bpi/shared']`). There is no shared runtime process and no shared deployment dependency, so hosting the two apps separately does not create a conflict.
+The `shared` package is build-time only for the frontend. Vite bundles it into `frontend/dist`. The backend is self-contained: `shared/src/index.ts` is bundled into `backend/shared.js`, and backend files import it through the `#shared` package-import mapping. The backend does not import files outside `backend/`.
 
-Do not upload the root `node_modules/` or any `.env` file. Vercel installs from the root lockfile.
+If `shared/` changes, regenerate the backend bundle:
+
+```bash
+node_modules/.bin/esbuild shared/src/index.ts --bundle --format=esm \
+  --platform=node --target=node20 --external:zod \
+  --outfile=backend/shared.js
+```
+
+Do not upload the root `node_modules/` or any `.env` file.
 
 ## Deploying as two Vercel projects
 
@@ -352,20 +360,17 @@ The frontend and backend are separate Vercel projects from the same repository:
 - **Frontend project:** Root Directory `frontend`
 - **Backend project:** Root Directory `backend`
 
-Both projects should enable Vercel's **Include source files outside of the Root Directory in the Build Step** option. This makes the parent workspace (`shared/`, root `package.json`, and root lockfile) available. Each app has its own `vercel.json` that runs the workspace install/build from the repository root.
+The frontend project uses the root workspace. The backend does not: it is self-contained inside `backend/` and imports its bundled `backend/shared.js` through `#shared`.
 
 ### 1. Backend Vercel project
 
 1. Import the repository into Vercel.
 2. Set **Root Directory** to `backend`.
-3. Enable **Include source files outside of the Root Directory in the Build Step**.
-4. `backend/vercel.json` provides:
-   - Install: `cd .. && npm ci --include=dev`
-   - Build: `cd .. && npm run build -w backend`
-   - Catch-all API function: `api/[...path].js`
-   - Function duration: `300` seconds
-   - Hourly cron: `GET /api/internal/cleanup-uploads`
-5. Add the backend environment variables:
+3. Set **Framework Preset** to **Express**.
+4. Do **not** enable "Include source files outside of the Root Directory". The backend has no outer imports.
+5. Leave **Install Command**, **Build Command**, and **Output Directory** at Vercel defaults. There is no backend build step, no `tsup`, and no `dist`.
+6. `backend/vercel.json` sets the Express framework, `bom1` region, and the hourly cleanup cron. Vercel detects `backend/index.js`, calls its default export, and does not call `app.listen` because `VERCEL` is set.
+7. Add the backend environment variables:
 
 ```
 NODE_ENV=production
@@ -378,7 +383,10 @@ COOKIE_SAME_SITE=lax
 STORAGE_DRIVER=blob
 BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...
 BLOB_PREFIX=EMP records
+MAX_FILE_SIZE_MB=10
 GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
+GOOGLE_DRIVE_FOLDER_ID=1Lh_KxchaJpcgG8eqX0QB_8QHfIT3FnQv
+GOOGLE_SHARED_DRIVE_ID=0ACztNAC_Ca0AUk9PVA
 GOOGLE_DRIVE_ROOT_NAME=EMP records
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=<strong password>
@@ -399,7 +407,7 @@ MONGODB_URI='mongodb+srv://...' npm run seed:admin -w backend
 
 Atlas must allow Vercel's outbound connections. For a simple setup, add `0.0.0.0/0` to the Atlas IP access list with a strong database password; for production, use Atlas PrivateLink/Vercel integration or a restricted egress proxy.
 
-The backend's `api/[...path].js` function imports the built `backend/dist/vercel.js`; the Vercel build command creates it. The serverless initializer connects to Atlas once per warm instance, creates the Express app, and reuses the Mongoose connection. The Drive-sync background job uses Vercel `waitUntil`, so it continues after the `202` response within the function duration limit. Large syncs should move to a durable worker.
+The backend entrypoint connects to Atlas at module scope, creates the Express app once per warm instance, and exports it. Vercel's Express framework creates one function; there is no `api/[...path]` wrapper. The Drive-sync background job uses Vercel `waitUntil`, so it continues after the `202` response within the function duration limit. Large syncs should move to a durable worker.
 
 ### 2. Frontend Vercel project
 
@@ -440,7 +448,7 @@ If you bypass the proxy and call the backend domain directly, you would need `CO
 
 ### Alternative non-Vercel backend
 
-A persistent Node host (Render, Railway, Fly.io, VPS) can still run `backend/dist/index.js`. In that case, either keep the frontend rewrite proxy (recommended) or use `COOKIE_SAME_SITE=none` and point `VITE_API_BASE_URL` directly at the backend. The Vercel-specific `api/[...path].js` and `waitUntil` paths are not required there.
+A persistent Node host (Render, Railway, Fly.io, VPS) can still run `node backend/index.js`; the `app.listen` guard only skips listening when `VERCEL` is set. Either keep the frontend rewrite proxy (recommended) or use `COOKIE_SAME_SITE=none` and point `VITE_API_BASE_URL` directly at the backend.
 
 ### MongoDB and Blob
 
