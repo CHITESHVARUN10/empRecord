@@ -322,7 +322,7 @@ backend/                          Express API, MongoDB models, Passport sessions
 frontend/                         React employee form and admin portal
 frontend/vercel.json              Vercel frontend project config and /api proxy
 backend/vercel.json               Vercel backend functions/cron config
-backend/api/[...path].ts          Vercel catch-all API function
+backend/api/[...path].js          Vercel catch-all API function
 backend/src/vercel.ts             Serverless API initializer
 asstes/                           Original Blaupunkt logo PDF
 ```
@@ -362,7 +362,7 @@ Both projects should enable Vercel's **Include source files outside of the Root 
 4. `backend/vercel.json` provides:
    - Install: `cd .. && npm ci --include=dev`
    - Build: `cd .. && npm run build -w backend`
-   - Catch-all API function: `api/[...path].ts`
+   - Catch-all API function: `api/[...path].js`
    - Function duration: `300` seconds
    - Hourly cron: `GET /api/internal/cleanup-uploads`
 5. Add the backend environment variables:
@@ -399,7 +399,7 @@ MONGODB_URI='mongodb+srv://...' npm run seed:admin -w backend
 
 Atlas must allow Vercel's outbound connections. For a simple setup, add `0.0.0.0/0` to the Atlas IP access list with a strong database password; for production, use Atlas PrivateLink/Vercel integration or a restricted egress proxy.
 
-The backend's `api/[...path].ts` function imports the built `backend/dist/vercel.js`; the Vercel build command creates it. The serverless initializer connects to Atlas once per warm instance, creates the Express app, and reuses the Mongoose connection. The Drive-sync background job uses Vercel `waitUntil`, so it continues after the `202` response within the function duration limit. Large syncs should move to a durable worker.
+The backend's `api/[...path].js` function imports the built `backend/dist/vercel.js`; the Vercel build command creates it. The serverless initializer connects to Atlas once per warm instance, creates the Express app, and reuses the Mongoose connection. The Drive-sync background job uses Vercel `waitUntil`, so it continues after the `202` response within the function duration limit. Large syncs should move to a durable worker.
 
 ### 2. Frontend Vercel project
 
@@ -440,7 +440,7 @@ If you bypass the proxy and call the backend domain directly, you would need `CO
 
 ### Alternative non-Vercel backend
 
-A persistent Node host (Render, Railway, Fly.io, VPS) can still run `backend/dist/index.js`. In that case, either keep the frontend rewrite proxy (recommended) or use `COOKIE_SAME_SITE=none` and point `VITE_API_BASE_URL` directly at the backend. The Vercel-specific `api/[...path].ts` and `waitUntil` paths are not required there.
+A persistent Node host (Render, Railway, Fly.io, VPS) can still run `backend/dist/index.js`. In that case, either keep the frontend rewrite proxy (recommended) or use `COOKIE_SAME_SITE=none` and point `VITE_API_BASE_URL` directly at the backend. The Vercel-specific `api/[...path].js` and `waitUntil` paths are not required there.
 
 ### MongoDB and Blob
 

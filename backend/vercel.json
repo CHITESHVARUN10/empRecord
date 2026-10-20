@@ -3,7 +3,7 @@
   "installCommand": "cd .. && npm ci --include=dev",
   "buildCommand": "cd .. && npm run build -w backend",
   "functions": {
-    "api/[...path].ts": {
+    "api/[...path].js": {
       "maxDuration": 300,
       "memory": 1024
     }
