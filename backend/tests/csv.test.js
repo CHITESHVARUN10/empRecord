@@ -1,6 +1,9 @@
 import { Types } from "mongoose";
 import { describe, expect, it } from "vitest";
-import { buildEmployeeCsv } from "../src/services/csv.service.js";
+import {
+  buildEmployeeCsv,
+  buildEmployeeDetailsCsv
+} from "../src/services/csv.service.js";
 import { validEmployee } from "./helpers.js";
 function csvEmployee(overrides = {}) {
   const id = new Types.ObjectId();
@@ -43,31 +46,28 @@ describe("CSV export", () => {
     expect(csv).toContain("01-01-1990");
     expect(csv).toContain("01-01-2020");
     expect(csv).toContain(
-      `http://localhost:5050/api/admin/employees/${id}/attachments/aadhaar`
+      `http://localhost:5050/api/public/employees/${id}/attachments/aadhaar`
     );
     expect(csv).toContain(
-      `http://localhost:5050/api/admin/employees/${id}/attachments/pan`
+      `http://localhost:5050/api/public/employees/${id}/attachments/pan`
     );
     expect(csv).toContain("01-01-2026 15:30 IST");
   });
-  it("uses Google Drive links and the employee Drive folder when available", () => {
+  it("uses public website links and never Google Drive links", () => {
     const employee = csvEmployee();
     const id = String(employee._id);
     employee.driveFolderWebViewLink = "https://drive.google.com/drive/folders/employee-folder";
     employee.attachments.aadhaar.driveWebViewLink = "https://drive.google.com/file/d/aadhaar/view";
     employee.attachments.pan.driveWebViewLink = "https://drive.google.com/file/d/pan/view";
     const csv = buildEmployeeCsv([employee], "http://localhost:5050");
-    expect(csv).toContain("Google Drive Folder");
     expect(csv).toContain(
-      "https://drive.google.com/drive/folders/employee-folder"
+      `http://localhost:5050/api/public/employees/${id}/attachments/aadhaar`
     );
     expect(csv).toContain(
-      "https://drive.google.com/file/d/aadhaar/view"
+      `http://localhost:5050/api/public/employees/${id}/attachments/pan`
     );
-    expect(csv).toContain("https://drive.google.com/file/d/pan/view");
-    expect(csv).not.toContain(
-      `http://localhost:5050/api/admin/employees/${id}/attachments/aadhaar`
-    );
+    expect(csv).not.toContain("Google Drive Folder");
+    expect(csv).not.toContain("drive.google.com");
   });
   it("leaves the joining date blank when it is not provided", () => {
     const csv = buildEmployeeCsv(
@@ -81,5 +81,34 @@ describe("CSV export", () => {
     expect(csv.startsWith("\uFEFF")).toBe(true);
     expect(csv).toContain("Employee Code");
     expect(csv.trim().split("\n")).toHaveLength(1);
+  });
+  it("builds a complete per-employee details file with public links", () => {
+    const employee = csvEmployee();
+    employee.driveFolderWebViewLink =
+      "https://drive.google.com/drive/folders/employee-folder";
+    employee.attachments.aadhaar.driveWebViewLink =
+      "https://drive.google.com/file/d/aadhaar/view";
+    employee.attachments.pan.driveWebViewLink =
+      "https://drive.google.com/file/d/pan/view";
+    const id = String(employee._id);
+    const csv = buildEmployeeDetailsCsv(
+      employee,
+      "http://localhost:5050"
+    );
+    expect(csv.startsWith("\uFEFF")).toBe(true);
+    expect(csv).toContain("Field,Value");
+    expect(csv).toContain("Employee ID");
+    expect(csv).toContain("Employee Code");
+    expect(csv).toContain("BPIN PRIVATE LIMITED");
+    expect(csv).toContain("Aadhaar Attachment");
+    expect(csv).toContain(
+      `http://localhost:5050/api/public/employees/${id}/attachments/aadhaar`
+    );
+    expect(csv).toContain("Aadhaar Original File Name");
+    expect(csv).toContain("aadhaar.pdf");
+    expect(csv).toContain("PAN MIME Type");
+    expect(csv).toContain("Emergency Contact Mobile");
+    expect(csv).not.toContain("Google Drive Folder");
+    expect(csv).not.toContain("drive.google.com");
   });
 });

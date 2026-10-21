@@ -111,6 +111,10 @@ const employeeSchema = new Schema(
     driveFolderName: { type: String },
     driveFolderWebViewLink: { type: String },
     driveSyncedAt: { type: Date },
+    driveDetailsFileId: { type: String },
+    driveDetailsWebViewLink: { type: String },
+    driveDetailsSyncedAt: { type: Date },
+    driveDetailsHash: { type: String },
     identifiers: {
       type: [String],
       required: true,

@@ -2,7 +2,6 @@ import { stringify } from "csv-stringify/sync";
 const columns = [
   { key: "employeeCode", header: "Employee Code" },
   { key: "organization", header: "Organization" },
-  { key: "driveFolder", header: "Google Drive Folder" },
   { key: "fullName", header: "Employee Name" },
   { key: "dateOfBirth", header: "Date Of Birth" },
   { key: "gender", header: "Gender" },
@@ -65,73 +64,113 @@ function safeCell(value) {
   return text;
 }
 function attachmentUrl(baseUrl, employeeId, kind) {
-  return `${baseUrl}/api/admin/employees/${employeeId}/attachments/${kind}`;
+  return `${baseUrl}/api/public/employees/${employeeId}/attachments/${kind}`;
 }
 function attachmentLink(employee, employeeId, baseUrl, kind) {
   const meta = employee.attachments?.[kind];
   if (!meta) return "";
-  return safeCell(
-    meta.driveWebViewLink ?? attachmentUrl(baseUrl, employeeId, kind)
-  );
+  return safeCell(attachmentUrl(baseUrl, employeeId, kind));
+}
+function employeeCsvRow(employee, baseUrl) {
+  const id = String(employee._id);
+  return {
+    employeeCode: safeCell(employee.employeeCode),
+    organization: safeCell(employee.organization ?? ""),
+    fullName: safeCell(employee.fullName),
+    dateOfBirth: safeCell(formatDateOnly(employee.dateOfBirth)),
+    gender: safeCell(employee.gender),
+    nationality: safeCell(employee.nationality),
+    maritalStatus: safeCell(employee.maritalStatus),
+    bloodGroup: safeCell(employee.bloodGroup),
+    nominee: safeCell(employee.nominee),
+    aadhaarNumber: safeCell(employee.aadhaarNumber),
+    panNumber: safeCell(employee.panNumber),
+    passportNumber: safeCell(employee.passportNumber ?? ""),
+    department: safeCell(employee.department),
+    joiningDate: safeCell(formatDateOnly(employee.joiningDate)),
+    permanentAddressLine: safeCell(employee.permanentAddress.line),
+    permanentState: safeCell(employee.permanentAddress.state),
+    permanentCity: safeCell(employee.permanentAddress.city),
+    permanentPincode: safeCell(employee.permanentAddress.pincode),
+    officeMobile: safeCell(employee.officeMobile),
+    officeEmail: safeCell(employee.officeEmail ?? ""),
+    presentSameAsPermanent: employee.presentSameAsPermanent ? "Yes" : "No",
+    presentAddressLine: safeCell(employee.presentAddress.line),
+    presentState: safeCell(employee.presentAddress.state),
+    presentCity: safeCell(employee.presentAddress.city),
+    presentPincode: safeCell(employee.presentAddress.pincode),
+    personalMobile: safeCell(employee.personalMobile),
+    personalEmail: safeCell(employee.personalEmail),
+    emergencyName: safeCell(employee.emergencyContact.name),
+    emergencyRelation: safeCell(employee.emergencyContact.relation),
+    emergencyMobile: safeCell(employee.emergencyContact.mobile),
+    aadhaarAttachment: attachmentLink(
+      employee,
+      id,
+      baseUrl,
+      "aadhaar"
+    ),
+    panAttachment: attachmentLink(employee, id, baseUrl, "pan"),
+    passportAttachment: attachmentLink(
+      employee,
+      id,
+      baseUrl,
+      "passport"
+    ),
+    submittedAt: safeCell(formatTimestamp(employee.createdAt)),
+    updatedAt: safeCell(formatTimestamp(employee.updatedAt))
+  };
 }
 function buildEmployeeCsv(employees, baseUrl) {
-  const rows = employees.map((employee) => {
-    const id = String(employee._id);
-    return {
-      employeeCode: safeCell(employee.employeeCode),
-      organization: safeCell(employee.organization ?? ""),
-      driveFolder: safeCell(employee.driveFolderWebViewLink ?? ""),
-      fullName: safeCell(employee.fullName),
-      dateOfBirth: safeCell(formatDateOnly(employee.dateOfBirth)),
-      gender: safeCell(employee.gender),
-      nationality: safeCell(employee.nationality),
-      maritalStatus: safeCell(employee.maritalStatus),
-      bloodGroup: safeCell(employee.bloodGroup),
-      nominee: safeCell(employee.nominee),
-      aadhaarNumber: safeCell(employee.aadhaarNumber),
-      panNumber: safeCell(employee.panNumber),
-      passportNumber: safeCell(employee.passportNumber ?? ""),
-      department: safeCell(employee.department),
-      joiningDate: safeCell(formatDateOnly(employee.joiningDate)),
-      permanentAddressLine: safeCell(employee.permanentAddress.line),
-      permanentState: safeCell(employee.permanentAddress.state),
-      permanentCity: safeCell(employee.permanentAddress.city),
-      permanentPincode: safeCell(employee.permanentAddress.pincode),
-      officeMobile: safeCell(employee.officeMobile),
-      officeEmail: safeCell(employee.officeEmail ?? ""),
-      presentSameAsPermanent: employee.presentSameAsPermanent ? "Yes" : "No",
-      presentAddressLine: safeCell(employee.presentAddress.line),
-      presentState: safeCell(employee.presentAddress.state),
-      presentCity: safeCell(employee.presentAddress.city),
-      presentPincode: safeCell(employee.presentAddress.pincode),
-      personalMobile: safeCell(employee.personalMobile),
-      personalEmail: safeCell(employee.personalEmail),
-      emergencyName: safeCell(employee.emergencyContact.name),
-      emergencyRelation: safeCell(employee.emergencyContact.relation),
-      emergencyMobile: safeCell(employee.emergencyContact.mobile),
-      aadhaarAttachment: attachmentLink(
-        employee,
-        id,
-        baseUrl,
-        "aadhaar"
-      ),
-      panAttachment: attachmentLink(employee, id, baseUrl, "pan"),
-      passportAttachment: attachmentLink(
-        employee,
-        id,
-        baseUrl,
-        "passport"
-      ),
-      submittedAt: safeCell(formatTimestamp(employee.createdAt)),
-      updatedAt: safeCell(formatTimestamp(employee.updatedAt))
-    };
-  });
+  const rows = employees.map((employee) => employeeCsvRow(employee, baseUrl));
   return stringify(rows, {
     header: true,
     columns,
     bom: true
   });
 }
+const attachmentColumns = [
+  ["aadhaar", "Aadhaar"],
+  ["pan", "PAN"],
+  ["passport", "Passport"]
+];
+function buildEmployeeDetailsCsv(employee, baseUrl) {
+  const values = employeeCsvRow(employee, baseUrl);
+  const rows = [
+    { field: "Employee ID", value: String(employee._id) },
+    ...columns.map((column) => ({
+      field: column.header,
+      value: values[column.key]
+    }))
+  ];
+  for (const [kind, label] of attachmentColumns) {
+    const meta = employee.attachments?.[kind];
+    if (!meta) continue;
+    rows.push(
+      {
+        field: `${label} Original File Name`,
+        value: safeCell(meta.originalName)
+      },
+      { field: `${label} MIME Type`, value: safeCell(meta.mimeType) },
+      { field: `${label} Size (bytes)`, value: safeCell(meta.size) },
+      {
+        field: `${label} Uploaded At`,
+        value: safeCell(
+          meta.uploadedAt ? formatTimestamp(meta.uploadedAt) : ""
+        )
+      }
+    );
+  }
+  return stringify(rows, {
+    header: true,
+    columns: [
+      { key: "field", header: "Field" },
+      { key: "value", header: "Value" }
+    ],
+    bom: true
+  });
+}
 export {
-  buildEmployeeCsv
+  buildEmployeeCsv,
+  buildEmployeeDetailsCsv
 };

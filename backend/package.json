@@ -11,6 +11,7 @@
     "dev": "NODE_ENV=development node --watch index.js",
     "start": "node index.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
+    "sync:drive": "node src/scripts/syncDrive.js",
     "test": "vitest run",
     "build:shared": "esbuild ../shared/src/index.ts --bundle --format=esm --platform=node --target=node20 --external:zod --outfile=shared.js"
   },

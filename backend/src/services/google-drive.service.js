@@ -1,4 +1,4 @@
-import { createSign, randomUUID } from "node:crypto";
+import { createHash, createSign, randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { waitUntil } from "@vercel/functions";
@@ -15,13 +15,17 @@ import {
   EmployeeModel
 } from "../models/Employee.js";
 import { HttpError } from "../utils/http-error.js";
-import { buildEmployeeCsv } from "./csv.service.js";
+import {
+  buildEmployeeCsv,
+  buildEmployeeDetailsCsv
+} from "./csv.service.js";
 import { openAttachment } from "./storage.service.js";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const CSV_MIME = "text/csv";
+const DETAILS_FILE_NAME = "Employee Details.csv";
 let cachedKey = null;
 let cachedToken = null;
 function encodeBase64Url(value) {
@@ -283,20 +287,6 @@ function attachmentIsSynced(meta) {
     meta?.driveFileId && meta.driveWebViewLink && meta.driveSyncedAt && meta.driveSyncedAt.getTime() >= meta.uploadedAt.getTime()
   );
 }
-function countAttachments(employee) {
-  return ATTACHMENT_KINDS.filter(
-    (kind) => Boolean(employee.attachments?.[kind])
-  ).length;
-}
-function employeeIsFullySynced(employee) {
-  if (!employee.driveFolderId || !employee.driveFolderWebViewLink || employee.driveFolderName !== employeeFolderName(employee)) {
-    return false;
-  }
-  return ATTACHMENT_KINDS.every((kind) => {
-    const meta = employee.attachments?.[kind];
-    return !meta || attachmentIsSynced(meta);
-  });
-}
 async function ensureEmployeeFolder(root, employee) {
   const employeeId = String(employee._id);
   const query = [
@@ -332,6 +322,16 @@ async function findAttachmentFile(folderId, employeeId, kind, driveId) {
   const query = [
     `appProperties has { key='employeeId' and value='${escapeQuery(employeeId)}' }`,
     `appProperties has { key='attachmentKind' and value='${kind}' }`,
+    `'${escapeQuery(folderId)}' in parents`,
+    "trashed = false"
+  ].join(" and ");
+  const files = await listFiles(query, driveId);
+  return files[0];
+}
+async function findDetailsFile(folderId, employeeId, driveId) {
+  const query = [
+    `appProperties has { key='employeeId' and value='${escapeQuery(employeeId)}' }`,
+    "appProperties has { key='employeeDetails' and value='true' }",
     `'${escapeQuery(folderId)}' in parents`,
     "trashed = false"
   ].join(" and ");
@@ -453,6 +453,46 @@ async function syncAttachment(employee, folder, root, kind) {
   );
   return "uploaded";
 }
+async function syncEmployeeDetails(employee, folder, root) {
+  const content = buildEmployeeDetailsCsv(employee, env.PUBLIC_API_URL);
+  const hash = createHash("sha256").update(content).digest("hex");
+  if (employee.driveDetailsFileId && employee.driveDetailsWebViewLink && employee.driveDetailsSyncedAt && employee.driveDetailsHash === hash) {
+    return "skipped";
+  }
+  const employeeId = String(employee._id);
+  let fileId = employee.driveDetailsFileId;
+  if (!fileId) {
+    const existing = await findDetailsFile(
+      folder.id,
+      employeeId,
+      root.driveId
+    );
+    fileId = existing?.id;
+  }
+  const file = await writeDriveFile({
+    fileId,
+    folderId: folder.id,
+    name: DETAILS_FILE_NAME,
+    mimeType: CSV_MIME,
+    buffer: Buffer.from(content, "utf8"),
+    appProperties: {
+      employeeId,
+      employeeDetails: "true"
+    }
+  });
+  await EmployeeModel.updateOne(
+    { _id: employee._id },
+    {
+      $set: {
+        driveDetailsFileId: file.id,
+        driveDetailsWebViewLink: file.webViewLink,
+        driveDetailsSyncedAt: /* @__PURE__ */ new Date(),
+        driveDetailsHash: hash
+      }
+    }
+  );
+  return "uploaded";
+}
 async function syncMasterCsv(root, csv) {
   const query = [
     "appProperties has { key='masterCsv' and value='true' }",
@@ -494,45 +534,61 @@ async function runDriveSyncJob(jobId) {
     let filesSkipped = 0;
     for (const employee of employees) {
       const employeeId = String(employee._id);
+      let employeeSkipped = true;
       try {
-        if (employeeIsFullySynced(employee)) {
-          skipped += 1;
-          filesSkipped += countAttachments(employee);
-        } else {
-          const folder = await ensureEmployeeFolder(root, employee);
-          const folderName = employeeFolderName(employee);
-          await EmployeeModel.updateOne(
-            { _id: employee._id },
-            {
-              $set: {
-                driveFolderId: folder.id,
-                driveFolderName: folderName,
-                driveFolderWebViewLink: folder.webViewLink,
-                driveSyncedAt: /* @__PURE__ */ new Date()
-              }
-            }
-          );
-          for (const kind of ATTACHMENT_KINDS) {
-            if (!employee.attachments?.[kind]) continue;
-            try {
-              const result2 = await syncAttachment(
-                employee,
-                folder,
-                root,
-                kind
-              );
-              if (result2 === "uploaded") filesUploaded += 1;
-              else filesSkipped += 1;
-            } catch (error) {
-              failures.push({
-                employeeId,
-                employeeName: employee.fullName,
-                kind,
-                message: errorMessage(error)
-              });
+        const folder = await ensureEmployeeFolder(root, employee);
+        const folderName = employeeFolderName(employee);
+        await EmployeeModel.updateOne(
+          { _id: employee._id },
+          {
+            $set: {
+              driveFolderId: folder.id,
+              driveFolderName: folderName,
+              driveFolderWebViewLink: folder.webViewLink,
+              driveSyncedAt: /* @__PURE__ */ new Date()
             }
           }
+        );
+        for (const kind of ATTACHMENT_KINDS) {
+          if (!employee.attachments?.[kind]) continue;
+          try {
+            const result2 = await syncAttachment(
+              employee,
+              folder,
+              root,
+              kind
+            );
+            if (result2 === "uploaded") {
+              filesUploaded += 1;
+              employeeSkipped = false;
+            } else {
+              filesSkipped += 1;
+            }
+          } catch (error) {
+            employeeSkipped = false;
+            failures.push({
+              employeeId,
+              employeeName: employee.fullName,
+              kind,
+              message: errorMessage(error)
+            });
+          }
         }
+        const fresh = await EmployeeModel.findById(employee._id).lean();
+        if (fresh) {
+          const detailsResult = await syncEmployeeDetails(
+            fresh,
+            folder,
+            root
+          );
+          if (detailsResult === "uploaded") {
+            filesUploaded += 1;
+            employeeSkipped = false;
+          } else {
+            filesSkipped += 1;
+          }
+        }
+        if (employeeSkipped) skipped += 1;
       } catch (error) {
         failures.push({
           employeeId,
@@ -733,5 +789,6 @@ export {
   getDriveSyncJob,
   getLatestDriveSyncJob,
   refreshDriveMasterCsv,
+  runDriveSyncJob,
   startDriveSyncJob
 };

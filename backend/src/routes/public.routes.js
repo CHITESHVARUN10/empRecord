@@ -1,9 +1,10 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
-import { duplicateCheckSchema } from '#shared';
+import { ATTACHMENT_KINDS, duplicateCheckSchema } from '#shared';
 import { parseEmployeeData } from "../middleware/upload.js";
 import { EmployeeModel } from "../models/Employee.js";
+import { openAttachment } from "../services/storage.service.js";
 import {
   createEmployee,
   findDuplicateConflicts
@@ -59,6 +60,30 @@ const sessionLimiter = rateLimit({
     });
   }
 });
+const attachmentLimiter = rateLimit({
+  windowMs: 60 * 1e3,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_request, response) => {
+    response.status(429).json({
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Too many document requests. Wait a moment and try again."
+      }
+    });
+  }
+});
+const attachmentIdSchema = z.string().regex(/^[a-fA-F0-9]{24}$/);
+const attachmentKindSchema = z.enum(ATTACHMENT_KINDS);
+function contentDisposition(filename, mode) {
+  const fallback = filename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_");
+  const encoded = encodeURIComponent(filename).replace(
+    /['()*]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+  return `${mode}; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+}
 const attachmentPathsSchema = z.object({
   aadhaar: z.string().min(1).max(1024),
   pan: z.string().min(1).max(1024),
@@ -87,6 +112,48 @@ function parseBody(schema, value) {
   return result.data;
 }
 const publicRoutes = Router();
+publicRoutes.get(
+  "/employees/:id/attachments/:kind",
+  attachmentLimiter,
+  async (request, response, next) => {
+    const id = attachmentIdSchema.safeParse(request.params.id);
+    const kind = attachmentKindSchema.safeParse(request.params.kind);
+    if (!id.success || !kind.success) {
+      throw new HttpError(404, "NOT_FOUND", "Document not found.");
+    }
+    const employee = await EmployeeModel.findById(id.data)
+      .select("attachments")
+      .lean();
+    const attachment = employee?.attachments?.[kind.data];
+    if (!attachment?.pathname) {
+      throw new HttpError(404, "NOT_FOUND", "Document not found.");
+    }
+    const result = await openAttachment(attachment.pathname);
+    if (!result) {
+      throw new HttpError(404, "NOT_FOUND", "Document not found.");
+    }
+    response.setHeader("Content-Type", attachment.mimeType);
+    response.setHeader("Content-Length", String(attachment.size));
+    response.setHeader(
+      "Content-Disposition",
+      contentDisposition(
+        attachment.originalName,
+        request.query.download === "1" ? "attachment" : "inline"
+      )
+    );
+    response.setHeader("Cache-Control", "private, no-store");
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("X-Robots-Tag", "noindex, nofollow");
+    result.stream.on("error", (error) => {
+      if (!response.headersSent) {
+        next(error);
+      } else {
+        response.destroy(error);
+      }
+    });
+    result.stream.pipe(response);
+  }
+);
 publicRoutes.post(
   "/duplicates/check",
   duplicateLimiter,

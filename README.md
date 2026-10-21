@@ -14,12 +14,13 @@ An internal employee data collection system for Blaupunkt. Employees submit thei
 - Direct browser-to-Vercel-Blob uploads in production with short-lived scoped tokens; no document bytes pass through the API.
 - Upload sessions linked to a pre-generated employee record, with retry, resume, duplicate rescue, and abandoned-upload cleanup.
 - Admin-only portal with search, organization and department filters, sorting, pagination, counts, record detail, edit, CSV export, Drive upload, and permanent record deletion with typed confirmation.
-- Private document storage in Vercel Blob under `EMP records/<employeeId>/`, served to admins only through an authenticated backend proxy.
-- Incremental Google Drive sync that creates `EMP records/<employee folder>` in the shared drive, copies only new or changed employee documents, uploads a master CSV, and stores Drive links for the CSV export.
+- Private document storage in Vercel Blob under `EMP records/<employeeId>/`, served to admins through an authenticated backend proxy and through intentionally public no-login CSV attachment links.
+- Incremental Google Drive sync that creates `EMP records/<employee folder>` in the shared drive, copies only new or changed employee documents, writes a per-employee details file, and uploads a master CSV.
 - Background Drive-sync jobs with live progress, polling, resume-after-reload, and skipped-file reporting.
+- CSV exports use public no-login website attachment links, not Google Drive links.
 - A development-only local file driver so the app can run without a Blob token.
 - REST API built with Express, MongoDB, Passport local auth, and session storage in MongoDB.
-- 49 backend tests covering validation, identifiers, organization-scoped employee codes, upload sessions, file signatures, CSV export, Drive links, and duplicate handling.
+- 50 backend tests covering validation, identifiers, organization-scoped employee codes, upload sessions, file signatures, CSV export, public attachment links, Drive links, and duplicate handling.
 
 ## Tech stack
 
@@ -32,7 +33,7 @@ An internal employee data collection system for Blaupunkt. Employees submit thei
 | Auth | Passport local strategy, express-session, connect-mongo, bcryptjs |
 | Files | Direct browser uploads to a private Vercel Blob store; Multer only for the local development driver |
 | Google Drive | Service-account REST sync into a shared drive; no extra Google SDK dependency |
-| Export | csv-stringify with Excel BOM, formula-injection protection, and Google Drive link columns |
+| Export | csv-stringify with Excel BOM, formula-injection protection, and public website attachment links |
 
 ## Prerequisites
 
@@ -103,7 +104,7 @@ npm run seed:admin -- --force
 | `COOKIE_SECURE` | no | `true` in HTTPS production |
 | `COOKIE_SAME_SITE` | no | `lax` when the frontend proxies `/api` (recommended); `none` only for direct cross-site API calls |
 | `CLIENT_ORIGIN` | no | Comma-separated allowed frontend origins |
-| `PUBLIC_API_URL` | yes | Origin used in exported CSV fallback attachment links. In the Vercel two-project setup, set this to the **frontend** URL so links go through the first-party `/api` proxy. |
+| `PUBLIC_API_URL` | yes | Origin used in exported CSV public attachment links. In the Vercel two-project setup, set this to the **frontend** URL so links go through the first-party `/api` proxy. |
 | `STORAGE_DRIVER` | no | `blob` (default) or `local` |
 | `BLOB_READ_WRITE_TOKEN` | with `blob` | Vercel Blob read-write token for the private store |
 | `BLOB_PREFIX` | no | Blob folder prefix, default `EMP records` |
@@ -151,7 +152,7 @@ EMP records/<employeeId>/<kind>-<uuid>.<ext>
 
 The old `Blaupunkt-employee-records/attachments` prefix is not used for new uploads. Existing records that still point at the old prefix continue to work because attachment retrieval and Drive sync follow the stored pathname.
 
-The Blob URL and read-write token are never sent to the browser. The admin attachment route checks the session, then streams the blob through the API. CSV attachment cells use Google Drive links after a Drive sync and fall back to that authenticated API route for unsynced files.
+The Blob URL and read-write token are never sent to the browser. The admin attachment route checks the session, then streams the blob through the API. CSV attachment cells use the public `/api/public/employees/:id/attachments/:kind` route, which streams the same private blob without requiring a login.
 
 Upload sessions expire after `UPLOAD_SESSION_HOURS`. Abandoned, replaced, and unconfirmed paths are deleted by the cleanup job. Files referenced by an employee record are never deleted by cleanup.
 
@@ -180,10 +181,10 @@ The progress survives a page reload: the latest job is read from MongoDB, so reo
 The job:
 
 1. Resolves `GOOGLE_DRIVE_FOLDER_ID`, or finds/creates `EMP records` in the configured Google shared drive.
-2. Skips employees whose Drive folder name and attachment file links are already current. Only new employees, changed folders, or new/replaced attachments are processed.
+2. Reuses each employee folder, skips attachments that are already current, and refreshes the per-employee `Employee Details.csv` when its content changes.
 3. Creates or reuses one folder per employee, named `<employee code or NO-CODE> - <full name>`.
 4. Copies Aadhaar, PAN, and passport files from the configured storage driver (Vercel Blob or local) into the employee folder.
-5. Updates `Employee Records.csv` in the `EMP records` root. The master CSV is refreshed every run so data-only changes such as department or phone are reflected even when no documents need re-uploading.
+5. Updates `Employee Records.csv` in the `EMP records` root with every stored field and the same public website attachment links used by the admin CSV export.
 6. Stores the Drive folder and file links on the MongoDB records.
 
 The layout is:
@@ -270,9 +271,9 @@ A unique multikey index on the normalized identifiers enforces the same rule at 
 
 ## CSV export
 
-The export includes every form field, including Organization, a `Google Drive Folder` column, and the Aadhaar/PAN/passport attachment links. It honours the active search, organization, and department filters. It is UTF-8 with a BOM so Excel opens Indian characters correctly, uses `DD-MM-YYYY` dates, escapes commas and newlines, and prefixes formula-leading cells to prevent CSV injection.
+The export includes every form field, including Organization and the Aadhaar/PAN/passport attachment links. It honours the active search, organization, and department filters. It is UTF-8 with a BOM so Excel opens Indian characters correctly, uses `DD-MM-YYYY` dates, escapes commas and newlines, and prefixes formula-leading cells to prevent CSV injection.
 
-After clicking **Upload to Google Drive**, the attachment columns contain the Google Drive file links and `Google Drive Folder` contains the employee's Drive folder link. Unsynced attachments fall back to the authenticated API attachment route, which requires an active admin session. The master `Employee Records.csv` in Drive is generated from the same data and therefore also contains Drive links.
+Attachment cells contain public website URLs such as `https://bpin-emp-record-frontend.vercel.app/api/public/employees/<id>/attachments/aadhaar`. These open the stored PDF or image inline and require no login. Google Drive links are not written to the CSV. The master `Employee Records.csv` in Drive is generated from the same data and uses the same public links.
 
 ## API overview
 
@@ -283,6 +284,7 @@ After clicking **Upload to Google Drive**, the attachment columns contain the Go
 | POST | `/api/auth/logout` | public | Destroy session |
 | GET | `/api/auth/me` | admin | Session probe |
 | POST | `/api/public/duplicates/check` | public | Duplicate preview |
+| GET | `/api/public/employees/:id/attachments/:kind` | public | Stream a document inline without login |
 | POST | `/api/public/upload-sessions` | public | Create a form upload session |
 | POST | `/api/public/employees` | public | Create employee from confirmed uploads |
 | POST | `/api/admin/employees/:id/upload-sessions` | admin | Create an edit upload session |
@@ -300,7 +302,7 @@ After clicking **Upload to Google Drive**, the attachment columns contain the Go
 | GET | `/api/admin/drive/sync` | admin | Latest Drive-sync job status/progress |
 | GET | `/api/admin/drive/sync/:jobId` | admin | Specific Drive-sync job status/progress |
 | GET | `/api/admin/stats` | admin | Counts and recent submissions |
-| GET | `/api/admin/export.csv` | admin | CSV export with Drive links where synced |
+| GET | `/api/admin/export.csv` | admin | CSV export with public website attachment links |
 
 ## Scripts
 
@@ -312,6 +314,7 @@ After clicking **Upload to Google Drive**, the attachment columns contain the Go
 | `npm run typecheck` | Typecheck shared/frontend TypeScript |
 | `npm test` | Run the JavaScript backend tests |
 | `npm run seed:admin` | Create or update the admin account |
+| `npm run sync:drive -w backend` | Run the incremental Drive sync locally |
 | `npm run generate:locations` | Regenerate the India states/cities dataset |
 
 ## Project structure
@@ -397,7 +400,7 @@ CLEANUP_SECRET=<strong random value>
 CRON_SECRET=<same value as CLEANUP_SECRET>
 ```
 
-`PUBLIC_API_URL` intentionally points at the **frontend** domain. The frontend proxies `/api/*` to the backend, so CSV attachment links stay first-party and work with the admin session on iOS/Safari.
+`PUBLIC_API_URL` intentionally points at the **frontend** domain. The frontend proxies `/api/*` to the backend, so CSV attachment links stay first-party. Those public document links do not require an admin session and open inline in the browser.
 
 Vercel Cron sends `Authorization: Bearer $CRON_SECRET`; the cleanup endpoint validates `CLEANUP_SECRET`, so set both variables to the same value. On Vercel, the hourly schedule may require a Pro plan; adjust the schedule in `backend/vercel.json` for your plan.
 
@@ -474,8 +477,8 @@ A persistent Node host (Render, Railway, Fly.io, VPS) can still run `node backen
 - Edit upload sessions require an authenticated admin and the matching employee record.
 - The list API masks Aadhaar and PAN. Full values are only available in the authenticated detail endpoint and CSV export.
 - Request logs contain method, path, status, and duration; they do not log request bodies, document bytes, or PII.
-- Document access requires an admin session; private Blob URLs are never exposed.
-- Google Drive sync and record deletion are admin-only. Sync uses a server-side service account; the JSON key is never sent to the browser or committed to the repository. Drive links are visible only to users with access to the target shared drive/folder.
+- Admin document access requires a session; the CSV attachment route is intentionally public and no-login, as requested. Private Blob URLs are never exposed.
+- Google Drive sync and record deletion are admin-only. Sync uses a server-side service account; the JSON key is never sent to the browser or committed to the repository. Drive links are visible only to users with access to the target shared drive/folder, but they are no longer included in exported CSV files.
 - Deletion requires both the typed `confirm` value in the browser and `{"confirmation":"confirm"}` in the API request.
 - Cleanup deletes abandoned/unlinked blobs but skips any pathname referenced by an employee record.
 - `backend/.env`, `frontend/.env`, `backend/.uploads`, and the Google service-account JSON pattern are gitignored.
