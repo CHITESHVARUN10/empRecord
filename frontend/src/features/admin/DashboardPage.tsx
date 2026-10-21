@@ -6,7 +6,17 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { CloudUpload, Download, Search, X } from 'lucide-react';
+import {
+  CloudUpload,
+  Download,
+  ExternalLink,
+  FileSpreadsheet,
+  FolderOpen,
+  MoreHorizontal,
+  RotateCw,
+  Search,
+  X,
+} from 'lucide-react';
 import {
   ADMIN_SORT_FIELDS,
   DEPARTMENTS,
@@ -19,6 +29,7 @@ import { Banner } from '../../components/Banner';
 import { EmptyState, ErrorState } from '../../components/PageStates';
 import { Pagination } from '../../components/Pagination';
 import { apiFetch, apiFetchBlob, ApiError } from '../../lib/api';
+import { formatDateTime } from '../../lib/format';
 import { EmployeeTable } from './EmployeeTable';
 import { StatsStrip } from './StatsStrip';
 import { adminKeys } from './queries';
@@ -47,6 +58,8 @@ export default function DashboardPage() {
   const order = params.get('order') === 'asc' ? 'asc' : 'desc';
 
   const [searchInput, setSearchInput] = useState(search);
+  const [driveMenuOpen, setDriveMenuOpen] = useState(false);
+  const driveMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSearchInput(search);
@@ -69,6 +82,27 @@ export default function DashboardPage() {
     }, 350);
     return () => window.clearTimeout(timer);
   }, [searchInput, search, setParams]);
+
+  useEffect(() => {
+    if (!driveMenuOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !driveMenuRef.current?.contains(event.target)
+      ) {
+        setDriveMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDriveMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [driveMenuOpen]);
 
   const filters = {
     search,
@@ -342,24 +376,65 @@ export default function DashboardPage() {
                 : 'Google Drive upload complete'
             }
             actions={
-              <>
-                <a
-                  className="btn btn--secondary btn--sm"
-                  href={driveResult.rootFolderWebViewLink}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open EMP records folder
-                </a>
-                <a
+              <div className="drive-result-actions">
+                <span className="drive-result-actions__updated">
+                  Last updated {formatDateTime(driveResult.syncedAt)}
+                </span>
+                <button
+                  type="button"
                   className="btn btn--ghost btn--sm"
-                  href={driveResult.csvWebViewLink}
-                  target="_blank"
-                  rel="noreferrer"
+                  onClick={() => void driveSyncQuery.refetch()}
+                  disabled={driveSyncQuery.isFetching}
+                  title="Refresh Google Drive status"
                 >
-                  Open CSV in Drive
-                </a>
-              </>
+                  {driveSyncQuery.isFetching ? (
+                    <span className="btn__spinner" aria-hidden="true" />
+                  ) : (
+                    <RotateCw size={15} aria-hidden="true" />
+                  )}
+                  Refresh
+                </button>
+                <div className="drive-menu" ref={driveMenuRef}>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--icon"
+                    aria-label="Google Drive options"
+                    aria-haspopup="menu"
+                    aria-expanded={driveMenuOpen}
+                    onClick={() => setDriveMenuOpen((open) => !open)}
+                  >
+                    <MoreHorizontal size={18} aria-hidden="true" />
+                  </button>
+                  {driveMenuOpen ? (
+                    <div className="drive-menu__panel" role="menu">
+                      <a
+                        className="drive-menu__item"
+                        role="menuitem"
+                        href={driveResult.rootFolderWebViewLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => setDriveMenuOpen(false)}
+                      >
+                        <FolderOpen size={16} aria-hidden="true" />
+                        Open EMP records folder
+                        <ExternalLink size={13} aria-hidden="true" />
+                      </a>
+                      <a
+                        className="drive-menu__item"
+                        role="menuitem"
+                        href={driveResult.csvWebViewLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => setDriveMenuOpen(false)}
+                      >
+                        <FileSpreadsheet size={16} aria-hidden="true" />
+                        Open CSV in Drive
+                        <ExternalLink size={13} aria-hidden="true" />
+                      </a>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             }
           >
             Scanned {driveResult.employees}{' '}
