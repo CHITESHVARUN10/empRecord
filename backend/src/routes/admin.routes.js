@@ -4,7 +4,8 @@ import {
   ADMIN_SORT_FIELDS,
   ATTACHMENT_KINDS,
   DEPARTMENTS,
-  ORGANIZATIONS
+  ORGANIZATIONS,
+  VERIFICATION_STATUSES
 } from '#shared';
 import { env } from "../config/env.js";
 import { EmployeeModel } from "../models/Employee.js";
@@ -14,7 +15,8 @@ import {
   attachmentMetaFor,
   buildEmployeeSearchFilter,
   deleteEmployee,
-  updateEmployee
+  updateEmployee,
+  updateEmployeeVerification
 } from "../services/employee.service.js";
 import { buildEmployeeCsv } from "../services/csv.service.js";
 import {
@@ -40,6 +42,7 @@ const listQuerySchema = z.object({
   search: z.string().max(80).trim().optional().default(""),
   department: z.enum(DEPARTMENTS).optional(),
   organization: z.enum(ORGANIZATIONS).optional(),
+  verificationStatus: z.enum(VERIFICATION_STATUSES).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   sort: z.enum(ADMIN_SORT_FIELDS).default("createdAt"),
@@ -48,7 +51,8 @@ const listQuerySchema = z.object({
 const exportQuerySchema = z.object({
   search: z.string().max(80).trim().optional().default(""),
   department: z.enum(DEPARTMENTS).optional(),
-  organization: z.enum(ORGANIZATIONS).optional()
+  organization: z.enum(ORGANIZATIONS).optional(),
+  verificationStatus: z.enum(VERIFICATION_STATUSES).optional()
 });
 const idSchema = z.string().regex(/^[a-fA-F0-9]{24}$/);
 const kindSchema = z.enum(ATTACHMENT_KINDS);
@@ -72,6 +76,15 @@ const updateBodySchema = z.object({
 const deleteBodySchema = z.object({
   confirmation: z.string().max(20)
 }).strict();
+const verificationBodySchema = z.object({
+  nameAsPerAadhaar: z.string().max(100).optional(),
+  aadhaarNumberFromFile: z.string().max(20).optional(),
+  panNumberFromFile: z.string().max(10).optional(),
+  aadhaarNumber: z.string().max(20).optional(),
+  panNumber: z.string().max(10).optional(),
+  verificationNotes: z.string().max(1000).optional(),
+  markVerified: z.boolean().optional().default(false)
+}).strict();
 function parseOrThrow(schema, value) {
   const result = schema.safeParse(value);
   if (!result.success) {
@@ -89,10 +102,20 @@ function parseOrThrow(schema, value) {
   }
   return result.data;
 }
-function listFilter(search, department, organization) {
+function listFilter(
+  search,
+  department,
+  organization,
+  verificationStatus
+) {
   const filter = buildEmployeeSearchFilter(search);
   if (department) filter.department = department;
   if (organization) filter.organization = organization;
+  if (verificationStatus === "pending") {
+    filter.verificationStatus = { $in: ["pending", null] };
+  } else if (verificationStatus) {
+    filter.verificationStatus = verificationStatus;
+  }
   return filter;
 }
 function contentDisposition(originalName, mode) {
@@ -123,7 +146,8 @@ adminRoutes.get("/employees", async (request, response) => {
   const filter = listFilter(
     query.search,
     query.department,
-    query.organization
+    query.organization,
+    query.verificationStatus
   );
   const skip = (query.page - 1) * query.limit;
   const sort = {
@@ -234,6 +258,21 @@ adminRoutes.patch("/employees/:id", async (request, response) => {
   const fresh = await EmployeeModel.findById(id).lean();
   response.json(serializeEmployeeDetail(fresh ?? employee));
 });
+adminRoutes.patch("/employees/:id/verification", async (request, response) => {
+  const id = parseOrThrow(idSchema, request.params.id);
+  const body = parseOrThrow(verificationBodySchema, request.body);
+  if (!request.user?._id) {
+    throw new HttpError(401, "UNAUTHORIZED", "Sign in to continue.");
+  }
+  const employee = await updateEmployeeVerification({
+    id,
+    ...body,
+    adminName:
+      request.user.displayName ?? request.user.username ?? "Administrator"
+  });
+  const fresh = await EmployeeModel.findById(id).lean();
+  response.json(serializeEmployeeDetail(fresh ?? employee));
+});
 adminRoutes.get(
   "/employees/:id/attachments/:kind",
   async (request, response, next) => {
@@ -326,7 +365,8 @@ adminRoutes.get("/export.csv", async (request, response) => {
   const filter = listFilter(
     query.search,
     query.department,
-    query.organization
+    query.organization,
+    query.verificationStatus
   );
   const employees = await EmployeeModel.find(filter).sort({ createdAt: -1 }).lean();
   const csv = buildEmployeeCsv(employees, env.PUBLIC_API_URL);

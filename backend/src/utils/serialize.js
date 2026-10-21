@@ -46,6 +46,10 @@ function serializeEmployeeSummary(employee) {
       pan: Boolean(employee.attachments?.pan?.pathname),
       passport: Boolean(employee.attachments?.passport?.pathname)
     },
+    aadhaarVerificationStatus:
+      employee.aadhaarVerificationStatus ?? "pending",
+    panVerificationStatus: employee.panVerificationStatus ?? "pending",
+    verificationStatus: employee.verificationStatus ?? "pending",
     createdAt: employee.createdAt,
     updatedAt: employee.updatedAt
   };
@@ -85,6 +89,16 @@ function serializeEmployeeDetail(employee) {
         "passport"
       )
     },
+    nameAsPerAadhaar: employee.nameAsPerAadhaar ?? "",
+    aadhaarNumberFromFile: employee.aadhaarNumberFromFile ?? "",
+    panNumberFromFile: employee.panNumberFromFile ?? "",
+    aadhaarVerificationStatus:
+      employee.aadhaarVerificationStatus ?? "pending",
+    panVerificationStatus: employee.panVerificationStatus ?? "pending",
+    verificationStatus: employee.verificationStatus ?? "pending",
+    verificationNotes: employee.verificationNotes ?? "",
+    verificationReviewedAt: employee.verificationReviewedAt ?? null,
+    verificationReviewedBy: employee.verificationReviewedBy ?? null,
     createdAt: employee.createdAt,
     updatedAt: employee.updatedAt
   };

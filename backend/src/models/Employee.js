@@ -2,9 +2,11 @@ import { Schema, model } from "mongoose";
 import {
   BLOOD_GROUPS,
   DEPARTMENTS,
+  DOCUMENT_VERIFICATION_STATUSES,
   GENDERS,
   MARITAL_STATUSES,
   ORGANIZATIONS,
+  VERIFICATION_STATUSES,
   buildIdentifiers
 } from '#shared';
 const blobMetaSchema = new Schema(
@@ -107,6 +109,48 @@ const employeeSchema = new Schema(
       pan: { type: blobMetaSchema, required: true },
       passport: { type: blobMetaSchema }
     },
+    nameAsPerAadhaar: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 100
+    },
+    aadhaarNumberFromFile: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 20
+    },
+    panNumberFromFile: {
+      type: String,
+      default: "",
+      trim: true,
+      uppercase: true,
+      maxlength: 10
+    },
+    aadhaarVerificationStatus: {
+      type: String,
+      enum: DOCUMENT_VERIFICATION_STATUSES,
+      default: "pending"
+    },
+    panVerificationStatus: {
+      type: String,
+      enum: DOCUMENT_VERIFICATION_STATUSES,
+      default: "pending"
+    },
+    verificationStatus: {
+      type: String,
+      enum: VERIFICATION_STATUSES,
+      default: "pending"
+    },
+    verificationNotes: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000
+    },
+    verificationReviewedAt: { type: Date },
+    verificationReviewedBy: { type: String, trim: true, maxlength: 120 },
     driveFolderId: { type: String },
     driveFolderName: { type: String },
     driveFolderWebViewLink: { type: String },
@@ -126,6 +170,7 @@ const employeeSchema = new Schema(
 employeeSchema.index({ identifiers: 1 }, { unique: true, name: "uniq_identifiers" });
 employeeSchema.index({ organization: 1 });
 employeeSchema.index({ department: 1 });
+employeeSchema.index({ verificationStatus: 1 });
 employeeSchema.index({ createdAt: -1 });
 employeeSchema.pre("validate", function() {
   this.identifiers = buildIdentifiers({

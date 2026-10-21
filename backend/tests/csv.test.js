@@ -42,6 +42,10 @@ describe("CSV export", () => {
     expect(csv).toContain("Organization");
     expect(csv).toContain("BPIN PRIVATE LIMITED");
     expect(csv).toContain("Aadhaar Attachment");
+    expect(csv).toContain("Name As Per Aadhaar");
+    expect(csv).toContain("Aadhaar No (File)");
+    expect(csv).toContain("PAN No (File)");
+    expect(csv).toContain("Verification Status");
     expect(csv).toContain("'=EVIL()");
     expect(csv).toContain("01-01-1990");
     expect(csv).toContain("01-01-2020");
@@ -68,6 +72,23 @@ describe("CSV export", () => {
     );
     expect(csv).not.toContain("Google Drive Folder");
     expect(csv).not.toContain("drive.google.com");
+  });
+  it("exports OCR values and human-readable verification statuses", () => {
+    const employee = csvEmployee({
+      nameAsPerAadhaar: "Test Aadhaar Name",
+      aadhaarNumberFromFile: "123456789012",
+      panNumberFromFile: "ABCDE1234F",
+      aadhaarVerificationStatus: "verified",
+      panVerificationStatus: "review",
+      verificationStatus: "review",
+      verificationNotes: "PAN needs admin review"
+    });
+    const csv = buildEmployeeCsv([employee], "http://localhost:5050");
+    expect(csv).toContain("Test Aadhaar Name");
+    expect(csv).toContain("123456789012");
+    expect(csv).toContain("ABCDE1234F");
+    expect(csv).toContain("Verified,Review,Review required");
+    expect(csv).toContain("PAN needs admin review");
   });
   it("leaves the joining date blank when it is not provided", () => {
     const csv = buildEmployeeCsv(

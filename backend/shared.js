@@ -19,6 +19,22 @@ var BLOOD_GROUPS = [
 ];
 var ATTACHMENT_KINDS = ["aadhaar", "pan", "passport"];
 var MANDATORY_ATTACHMENTS = ["aadhaar", "pan"];
+var DOCUMENT_VERIFICATION_STATUSES = [
+  "pending",
+  "verified",
+  "review"
+];
+var VERIFICATION_STATUSES = ["pending", "review", "done"];
+var DOCUMENT_VERIFICATION_STATUS_LABELS = {
+  pending: "Pending",
+  verified: "Verified",
+  review: "Review"
+};
+var VERIFICATION_STATUS_LABELS = {
+  pending: "Pending",
+  review: "Review required",
+  done: "Done"
+};
 var DEFAULT_NATIONALITY = "Indian";
 var MAX_FILE_SIZE_MB = 5;
 var MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -4746,6 +4762,8 @@ export {
   BLOOD_GROUPS,
   DEFAULT_NATIONALITY,
   DEPARTMENTS,
+  DOCUMENT_VERIFICATION_STATUSES,
+  DOCUMENT_VERIFICATION_STATUS_LABELS,
   DUPLICATE_FIELD_LABELS,
   GENDERS,
   INDIA_STATES,
@@ -4757,6 +4775,8 @@ export {
   MAX_FILE_SIZE_BYTES,
   MAX_FILE_SIZE_MB,
   ORGANIZATIONS,
+  VERIFICATION_STATUSES,
+  VERIFICATION_STATUS_LABELS,
   ageOnDate,
   buildIdentifiers,
   citiesForState,

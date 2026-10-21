@@ -294,6 +294,9 @@ export function EmployeeFields({
             <p>
               Aadhaar and PAN documents are required. The passport is optional.
               Upload PDF or JPEG files up to 5 MB each.
+              {mode === 'admin'
+                ? ' Replacing an Aadhaar or PAN file resets its verification to Pending.'
+                : ''}
             </p>
           </div>
         </header>

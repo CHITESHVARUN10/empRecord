@@ -1,7 +1,9 @@
 import type {
   AttachmentKind,
   Department,
+  DocumentVerificationStatus,
   EmployeeInput,
+  VerificationStatus,
 } from '@bpi/shared';
 
 export type AttachmentInfo = {
@@ -30,6 +32,9 @@ export type EmployeeSummary = {
     pan: boolean;
     passport: boolean;
   };
+  aadhaarVerificationStatus: DocumentVerificationStatus;
+  panVerificationStatus: DocumentVerificationStatus;
+  verificationStatus: VerificationStatus;
   createdAt: string;
   updatedAt: string;
 };
@@ -41,6 +46,15 @@ export type EmployeeDetail = EmployeeInput & {
     pan: AttachmentInfo | null;
     passport: AttachmentInfo | null;
   };
+  nameAsPerAadhaar: string;
+  aadhaarNumberFromFile: string;
+  panNumberFromFile: string;
+  aadhaarVerificationStatus: DocumentVerificationStatus;
+  panVerificationStatus: DocumentVerificationStatus;
+  verificationStatus: VerificationStatus;
+  verificationNotes: string;
+  verificationReviewedAt: string | null;
+  verificationReviewedBy: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -70,9 +84,21 @@ export type EmployeeListResponse = {
 export type EmployeeListFilters = {
   search: string;
   department: string;
+  organization: string;
+  verificationStatus: string;
   page: number;
   sort: string;
   order: 'asc' | 'desc';
+};
+
+export type VerificationUpdate = {
+  nameAsPerAadhaar?: string;
+  aadhaarNumberFromFile?: string;
+  panNumberFromFile?: string;
+  aadhaarNumber?: string;
+  panNumber?: string;
+  verificationNotes?: string;
+  markVerified?: boolean;
 };
 
 export type DriveSyncFailure = {

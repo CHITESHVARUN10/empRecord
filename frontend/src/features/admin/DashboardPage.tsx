@@ -11,6 +11,8 @@ import {
   ADMIN_SORT_FIELDS,
   DEPARTMENTS,
   ORGANIZATIONS,
+  VERIFICATION_STATUSES,
+  VERIFICATION_STATUS_LABELS,
   type AdminSortField,
 } from '@bpi/shared';
 import { Banner } from '../../components/Banner';
@@ -39,6 +41,7 @@ export default function DashboardPage() {
   const search = params.get('search') ?? '';
   const department = params.get('department') ?? '';
   const organization = params.get('organization') ?? '';
+  const verificationStatus = params.get('verificationStatus') ?? '';
   const page = Math.max(1, Number(params.get('page') ?? '1') || 1);
   const sort = asSort(params.get('sort'));
   const order = params.get('order') === 'asc' ? 'asc' : 'desc';
@@ -67,11 +70,20 @@ export default function DashboardPage() {
     return () => window.clearTimeout(timer);
   }, [searchInput, search, setParams]);
 
-  const filters = { search, department, organization, page, sort, order };
+  const filters = {
+    search,
+    department,
+    organization,
+    verificationStatus,
+    page,
+    sort,
+    order,
+  };
   const query = new URLSearchParams();
   if (search) query.set('search', search);
   if (department) query.set('department', department);
   if (organization) query.set('organization', organization);
+  if (verificationStatus) query.set('verificationStatus', verificationStatus);
   query.set('page', String(page));
   query.set('limit', '20');
   query.set('sort', sort);
@@ -139,6 +151,9 @@ export default function DashboardPage() {
       if (search) exportQuery.set('search', search);
       if (department) exportQuery.set('department', department);
       if (organization) exportQuery.set('organization', organization);
+      if (verificationStatus) {
+        exportQuery.set('verificationStatus', verificationStatus);
+      }
       const suffix = exportQuery.toString();
       return apiFetchBlob(
         `/api/admin/export.csv${suffix ? `?${suffix}` : ''}`,
@@ -158,7 +173,9 @@ export default function DashboardPage() {
     },
   });
 
-  const hasFilters = Boolean(search || department || organization);
+  const hasFilters = Boolean(
+    search || department || organization || verificationStatus,
+  );
   const total = employeesQuery.data?.total ?? 0;
 
   function updateParam(key: string, value: string) {
@@ -182,6 +199,7 @@ export default function DashboardPage() {
         next.delete('search');
         next.delete('department');
         next.delete('organization');
+        next.delete('verificationStatus');
         next.set('page', '1');
         return next;
       },
@@ -413,6 +431,22 @@ export default function DashboardPage() {
             ))}
           </select>
 
+          <select
+            className="select admin-department-filter"
+            value={verificationStatus}
+            onChange={(event) =>
+              updateParam('verificationStatus', event.target.value)
+            }
+            aria-label="Filter by verification status"
+          >
+            <option value="">All verification</option>
+            {VERIFICATION_STATUSES.map((value) => (
+              <option key={value} value={value}>
+                {VERIFICATION_STATUS_LABELS[value]}
+              </option>
+            ))}
+          </select>
+
           {hasFilters ? (
             <button
               type="button"
@@ -465,7 +499,7 @@ export default function DashboardPage() {
         hasFilters ? (
           <EmptyState
             title="No records match these filters"
-            description="Try a different search term or clear the organization and department filters."
+            description="Try a different search term or clear the organization, department, and verification filters."
             action={
               <button
                 type="button"

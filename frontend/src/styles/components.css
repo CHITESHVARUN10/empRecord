@@ -647,6 +647,24 @@
   color: var(--muted);
 }
 
+.verification-badge--success {
+  border-color: color-mix(in oklch, var(--success) 28%, var(--line));
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.verification-badge--warning {
+  border-color: color-mix(in oklch, var(--warning) 32%, var(--line));
+  background: var(--warning-soft);
+  color: oklch(0.43 0.09 70);
+}
+
+.verification-badge--neutral {
+  border-color: var(--line);
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
 .avatar {
   display: grid;
   place-items: center;

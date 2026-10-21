@@ -52,6 +52,47 @@ function normalizeEmployeeInput(input) {
     }
   };
 }
+const PAN_FORMAT = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+function digitsOnly(value) {
+  return String(value ?? "").replace(/\D/g, "");
+}
+function deriveDocumentVerificationStatus(kind, sourceValue, fileValue) {
+  const file = String(fileValue ?? "").trim();
+  if (!file) return "pending";
+  if (kind === "aadhaar") {
+    const source = digitsOnly(sourceValue);
+    const fromFile = digitsOnly(file);
+    return source.length === 12 && fromFile.length === 12 && source === fromFile
+      ? "verified"
+      : "review";
+  }
+  const source = String(sourceValue ?? "").trim().toUpperCase();
+  const fromFile = file.toUpperCase();
+  return PAN_FORMAT.test(fromFile) && source === fromFile
+    ? "verified"
+    : "review";
+}
+function deriveVerificationStatus(aadhaarStatus, panStatus) {
+  if (aadhaarStatus === "review" || panStatus === "review") return "review";
+  if (aadhaarStatus === "verified" && panStatus === "verified") return "done";
+  return "pending";
+}
+function reconcileVerification(employee) {
+  employee.aadhaarVerificationStatus = deriveDocumentVerificationStatus(
+    "aadhaar",
+    employee.aadhaarNumber,
+    employee.aadhaarNumberFromFile
+  );
+  employee.panVerificationStatus = deriveDocumentVerificationStatus(
+    "pan",
+    employee.panNumber,
+    employee.panNumberFromFile
+  );
+  employee.verificationStatus = deriveVerificationStatus(
+    employee.aadhaarVerificationStatus,
+    employee.panVerificationStatus
+  );
+}
 function conflictMessage(field) {
   if (field === "employeeCode") {
     return "Employee code is already used by an existing record in this organization.";
@@ -174,15 +215,29 @@ async function updateEmployee(input) {
   }
   const normalized = normalizeEmployeeInput(input.input);
   await assertNoDuplicates(normalized, input.id);
+  const previousAadhaar = employee.aadhaarNumber;
+  const previousPan = employee.panNumber;
+  let verificationChanged = false;
   const oldPathnames = [];
   for (const kind of ATTACHMENT_KINDS) {
     const meta = input.newAttachments[kind];
     if (!meta) continue;
     const previous = employee.attachments?.[kind]?.pathname;
     if (previous && previous !== meta.pathname) oldPathnames.push(previous);
-    if (kind === "aadhaar") employee.attachments.aadhaar = meta;
-    else if (kind === "pan") employee.attachments.pan = meta;
-    else employee.attachments.passport = meta;
+    if (kind === "aadhaar") {
+      employee.attachments.aadhaar = meta;
+      employee.nameAsPerAadhaar = "";
+      employee.aadhaarNumberFromFile = "";
+      employee.aadhaarVerificationStatus = "pending";
+      verificationChanged = true;
+    } else if (kind === "pan") {
+      employee.attachments.pan = meta;
+      employee.panNumberFromFile = "";
+      employee.panVerificationStatus = "pending";
+      verificationChanged = true;
+    } else {
+      employee.attachments.passport = meta;
+    }
   }
   if (input.removePassport && !input.newAttachments.passport) {
     const previous = employee.attachments?.passport?.pathname;
@@ -205,10 +260,106 @@ async function updateEmployee(input) {
     );
   }
   employee.set(normalized);
+  if (employee.aadhaarNumber !== previousAadhaar) {
+    employee.aadhaarVerificationStatus = deriveDocumentVerificationStatus(
+      "aadhaar",
+      employee.aadhaarNumber,
+      employee.aadhaarNumberFromFile
+    );
+    verificationChanged = true;
+  }
+  if (employee.panNumber !== previousPan) {
+    employee.panVerificationStatus = deriveDocumentVerificationStatus(
+      "pan",
+      employee.panNumber,
+      employee.panNumberFromFile
+    );
+    verificationChanged = true;
+  }
+  if (verificationChanged) {
+    employee.verificationStatus = deriveVerificationStatus(
+      employee.aadhaarVerificationStatus,
+      employee.panVerificationStatus
+    );
+    employee.verificationReviewedAt = void 0;
+    employee.verificationReviewedBy = void 0;
+  }
   await employee.save();
   await Promise.all(
     oldPathnames.map((pathname) => removeAttachment(pathname))
   );
+  return employee;
+}
+function verificationValidationError(fields) {
+  return new HttpError(
+    400,
+    "VALIDATION_ERROR",
+    "Please correct the verification details.",
+    { fields }
+  );
+}
+async function updateEmployeeVerification(input) {
+  const employee = await EmployeeModel.findById(input.id);
+  if (!employee) {
+    throw new HttpError(404, "NOT_FOUND", "Employee record not found.");
+  }
+  const fields = {};
+  if (input.aadhaarNumber !== void 0) {
+    const normalized = normalizeAadhaar(input.aadhaarNumber);
+    if (!/^\d{12}$/.test(normalized)) {
+      fields.aadhaarNumber = "Enter a valid 12-digit Aadhaar number.";
+    } else {
+      employee.aadhaarNumber = normalized;
+    }
+  }
+  if (input.panNumber !== void 0) {
+    const normalized = normalizePan(input.panNumber);
+    if (!PAN_FORMAT.test(normalized)) {
+      fields.panNumber = "Enter a valid PAN (for example ABCDE1234F).";
+    } else {
+      employee.panNumber = normalized;
+    }
+  }
+  if (Object.keys(fields).length) throw verificationValidationError(fields);
+
+  if (input.nameAsPerAadhaar !== void 0) {
+    employee.nameAsPerAadhaar = String(input.nameAsPerAadhaar).trim();
+  }
+  if (input.aadhaarNumberFromFile !== void 0) {
+    employee.aadhaarNumberFromFile = String(
+      input.aadhaarNumberFromFile
+    ).trim();
+  }
+  if (input.panNumberFromFile !== void 0) {
+    employee.panNumberFromFile = String(
+      input.panNumberFromFile
+    ).trim().toUpperCase();
+  }
+  if (input.verificationNotes !== void 0) {
+    employee.verificationNotes = String(input.verificationNotes).trim();
+  }
+
+  if (input.markVerified) {
+    const missing = {};
+    if (!employee.aadhaarNumberFromFile) {
+      missing.aadhaarNumberFromFile =
+        "Enter the Aadhaar number read from the file.";
+    }
+    if (!employee.panNumberFromFile) {
+      missing.panNumberFromFile = "Enter the PAN number read from the file.";
+    }
+    if (Object.keys(missing).length) throw verificationValidationError(missing);
+    employee.aadhaarVerificationStatus = "verified";
+    employee.panVerificationStatus = "verified";
+    employee.verificationStatus = "done";
+    employee.verificationReviewedAt = /* @__PURE__ */ new Date();
+    employee.verificationReviewedBy = input.adminName;
+  } else {
+    reconcileVerification(employee);
+    employee.verificationReviewedAt = void 0;
+    employee.verificationReviewedBy = void 0;
+  }
+  await employee.save();
   return employee;
 }
 function attachmentMetaFor(employee, kind) {
@@ -279,5 +430,7 @@ export {
   escapeRegex,
   findDuplicateConflicts,
   normalizeEmployeeInput,
-  updateEmployee
+  reconcileVerification,
+  updateEmployee,
+  updateEmployeeVerification
 };

@@ -15,6 +15,7 @@ import {
   initials,
 } from '../../lib/format';
 import type { EmployeeSummary } from './types';
+import { VerificationBadge } from './VerificationBadge';
 
 type EmployeeTableProps = {
   employees: EmployeeSummary[];
@@ -91,6 +92,7 @@ export function EmployeeTable({
             {sortableHeader('joiningDate', 'Joining date')}
             <th scope="col">Contact</th>
             <th scope="col">Documents</th>
+            <th scope="col">Verification</th>
             {sortableHeader('updatedAt', 'Updated')}
             <th scope="col">
               <span className="sr-only">View record</span>
@@ -143,6 +145,12 @@ export function EmployeeTable({
                     present={employee.documents.passport}
                   />
                 </span>
+              </td>
+              <td data-label="Verification">
+                <VerificationBadge
+                  status={employee.verificationStatus}
+                  compact
+                />
               </td>
               <td data-label="Updated" className="numeric">
                 {formatTimestampDate(employee.updatedAt)}

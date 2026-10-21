@@ -15,6 +15,8 @@ import {
   initials,
 } from '../../lib/format';
 import { AttachmentPanel } from './AttachmentPanel';
+import { VerificationBadge } from './VerificationBadge';
+import { VerificationReviewDialog } from './VerificationReviewDialog';
 import { adminKeys, useEmployeeDetail } from './queries';
 import type { AttachmentInfo, DeleteEmployeeResult } from './types';
 
@@ -41,6 +43,7 @@ export default function EmployeeDetailPage() {
   const queryClient = useQueryClient();
   const query = useEmployeeDetail(id);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [verificationOpen, setVerificationOpen] = useState(false);
   const [confirmation, setConfirmation] = useState('');
 
   const deleteMutation = useMutation({
@@ -151,6 +154,10 @@ export default function EmployeeDetailPage() {
               </span>
               <span>{employee.organization || 'Organization not provided'}</span>
               <DepartmentBadge department={employee.department} />
+              <VerificationBadge
+                status={employee.verificationStatus}
+                compact
+              />
               <span>
                 {employee.joiningDate
                   ? `Joined ${formatDateOnly(employee.joiningDate)}`
@@ -249,6 +256,84 @@ export default function EmployeeDetailPage() {
 
           <section className="detail-panel">
             <div className="detail-panel__head">
+              <div>
+                <h2>Document verification</h2>
+                <p>
+                  OCR values, number matching, and the admin review state for
+                  the Aadhaar and PAN cards.
+                </p>
+              </div>
+              <div className="detail-panel__actions">
+                <Link
+                  className="btn btn--secondary btn--sm"
+                  to={`/admin/employees/${employee.id}/edit`}
+                >
+                  Update documents
+                </Link>
+                <button
+                  type="button"
+                  className="btn btn--primary btn--sm"
+                  onClick={() => setVerificationOpen(true)}
+                >
+                  Review verification
+                </button>
+              </div>
+            </div>
+            <dl className="definition-grid">
+              <Definition label="Name as per Aadhaar">
+                {employee.nameAsPerAadhaar ? (
+                  <span className="mono-value">
+                    {employee.nameAsPerAadhaar}
+                  </span>
+                ) : (
+                  'Not read yet'
+                )}
+              </Definition>
+              <Definition label="Aadhaar number from file">
+                {employee.aadhaarNumberFromFile ? (
+                  <span className="mono-value">
+                    {employee.aadhaarNumberFromFile}
+                  </span>
+                ) : (
+                  'Not read yet'
+                )}
+              </Definition>
+              <Definition label="PAN number from file">
+                {employee.panNumberFromFile ? (
+                  <span className="mono-value">
+                    {employee.panNumberFromFile}
+                  </span>
+                ) : (
+                  'Not read yet'
+                )}
+              </Definition>
+              <Definition label="Aadhaar verification">
+                <VerificationBadge
+                  status={employee.aadhaarVerificationStatus}
+                />
+              </Definition>
+              <Definition label="PAN verification">
+                <VerificationBadge status={employee.panVerificationStatus} />
+              </Definition>
+              <Definition label="Overall verification">
+                <VerificationBadge status={employee.verificationStatus} />
+              </Definition>
+              <Definition label="Verification notes" full>
+                {employee.verificationNotes || 'No notes'}
+              </Definition>
+              {employee.verificationReviewedAt ? (
+                <Definition label="Reviewed" full>
+                  {formatDateTime(employee.verificationReviewedAt)}
+                  {employee.verificationReviewedBy
+                    ? ` by ${employee.verificationReviewedBy}`
+                    : ''}
+                </Definition>
+              ) : null}
+            </dl>
+          </section>
+
+          <section className="detail-panel">
+            <div className="detail-panel__head">
               <h2>Address and contact</h2>
             </div>
             <dl className="definition-grid">
@@ -330,6 +415,12 @@ export default function EmployeeDetailPage() {
           </section>
         </aside>
       </div>
+
+      <VerificationReviewDialog
+        employee={employee}
+        open={verificationOpen}
+        onClose={() => setVerificationOpen(false)}
+      />
 
       {deleteOpen ? (
         <Dialog

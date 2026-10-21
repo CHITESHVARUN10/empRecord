@@ -1,4 +1,8 @@
 import { stringify } from "csv-stringify/sync";
+import {
+  DOCUMENT_VERIFICATION_STATUS_LABELS,
+  VERIFICATION_STATUS_LABELS
+} from '#shared';
 const columns = [
   { key: "employeeCode", header: "Employee Code" },
   { key: "organization", header: "Organization" },
@@ -11,6 +15,13 @@ const columns = [
   { key: "nominee", header: "Nominee" },
   { key: "aadhaarNumber", header: "Aadhaar No" },
   { key: "panNumber", header: "PAN No" },
+  { key: "nameAsPerAadhaar", header: "Name As Per Aadhaar" },
+  { key: "aadhaarNumberFromFile", header: "Aadhaar No (File)" },
+  { key: "panNumberFromFile", header: "PAN No (File)" },
+  { key: "aadhaarVerification", header: "Aadhaar Verification" },
+  { key: "panVerification", header: "PAN Verification" },
+  { key: "verification", header: "Verification Status" },
+  { key: "verificationNotes", header: "Verification Notes" },
   { key: "passportNumber", header: "Passport Number" },
   { key: "department", header: "Department" },
   { key: "joiningDate", header: "Joining Date" },
@@ -85,6 +96,24 @@ function employeeCsvRow(employee, baseUrl) {
     nominee: safeCell(employee.nominee),
     aadhaarNumber: safeCell(employee.aadhaarNumber),
     panNumber: safeCell(employee.panNumber),
+    nameAsPerAadhaar: safeCell(employee.nameAsPerAadhaar ?? ""),
+    aadhaarNumberFromFile: safeCell(employee.aadhaarNumberFromFile ?? ""),
+    panNumberFromFile: safeCell(employee.panNumberFromFile ?? ""),
+    aadhaarVerification: safeCell(
+      DOCUMENT_VERIFICATION_STATUS_LABELS[
+        employee.aadhaarVerificationStatus ?? "pending"
+      ] ?? "Pending"
+    ),
+    panVerification: safeCell(
+      DOCUMENT_VERIFICATION_STATUS_LABELS[
+        employee.panVerificationStatus ?? "pending"
+      ] ?? "Pending"
+    ),
+    verification: safeCell(
+      VERIFICATION_STATUS_LABELS[employee.verificationStatus ?? "pending"] ??
+        "Pending"
+    ),
+    verificationNotes: safeCell(employee.verificationNotes ?? ""),
     passportNumber: safeCell(employee.passportNumber ?? ""),
     department: safeCell(employee.department),
     joiningDate: safeCell(formatDateOnly(employee.joiningDate)),

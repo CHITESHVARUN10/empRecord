@@ -12,7 +12,8 @@ vi.mock("../src/services/storage.service", () => ({
 import {
   createEmployee,
   findDuplicateConflicts,
-  updateEmployee
+  updateEmployee,
+  updateEmployeeVerification
 } from "../src/services/employee.service.js";
 import { EmployeeModel } from "../src/models/Employee.js";
 import { removeAttachment } from "../src/services/storage.service.js";
@@ -58,6 +59,9 @@ describe("employee duplicate handling", () => {
   it("creates an employee with unique identifiers", async () => {
     const employee = await create();
     expect(employee.employeeCode).toBe("BPI-100");
+    expect(employee.verificationStatus).toBe("pending");
+    expect(employee.aadhaarVerificationStatus).toBe("pending");
+    expect(employee.panVerificationStatus).toBe("pending");
     expect(await EmployeeModel.countDocuments({})).toBe(1);
   });
   it("returns the existing record for an idempotent employee id", async () => {
@@ -202,5 +206,59 @@ describe("employee duplicate handling", () => {
     expect(updated.fullName).toBe("Updated Employee");
     expect(updated.attachments.pan.pathname).toBe(replacement.pathname);
     expect(removeAttachment).toHaveBeenCalledWith(oldPan.pathname);
+  });
+  it("resets document verification when its file is replaced", async () => {
+    const employee = await create();
+    employee.nameAsPerAadhaar = "Test Aadhaar Name";
+    employee.aadhaarNumberFromFile = employee.aadhaarNumber;
+    employee.panNumberFromFile = employee.panNumber;
+    employee.aadhaarVerificationStatus = "verified";
+    employee.panVerificationStatus = "verified";
+    employee.verificationStatus = "done";
+    await employee.save();
+    const oldPan = employee.attachments.pan;
+    const updated = await updateEmployee({
+      id: String(employee._id),
+      input: validEmployee({ fullName: "Updated Employee" }),
+      newAttachments: {
+        pan: {
+          ...oldPan,
+          pathname: `${employee._id}/pan-replacement.jpg`,
+          originalName: "pan-replacement.jpg"
+        }
+      },
+      removePassport: false
+    });
+    expect(updated.panNumberFromFile).toBe("");
+    expect(updated.panVerificationStatus).toBe("pending");
+    expect(updated.aadhaarVerificationStatus).toBe("verified");
+    expect(updated.verificationStatus).toBe("pending");
+  });
+  it("marks both checks done after an admin review", async () => {
+    const employee = await create();
+    const updated = await updateEmployeeVerification({
+      id: String(employee._id),
+      aadhaarNumberFromFile: employee.aadhaarNumber,
+      panNumberFromFile: employee.panNumber,
+      markVerified: true,
+      adminName: "Test Admin"
+    });
+    expect(updated.aadhaarVerificationStatus).toBe("verified");
+    expect(updated.panVerificationStatus).toBe("verified");
+    expect(updated.verificationStatus).toBe("done");
+    expect(updated.verificationReviewedBy).toBe("Test Admin");
+  });
+  it("sets review when an OCR PAN does not match the entered PAN", async () => {
+    const employee = await create();
+    const updated = await updateEmployeeVerification({
+      id: String(employee._id),
+      aadhaarNumberFromFile: employee.aadhaarNumber,
+      panNumberFromFile: "AAAAA1111A",
+      markVerified: false,
+      adminName: "Test Admin"
+    });
+    expect(updated.aadhaarVerificationStatus).toBe("verified");
+    expect(updated.panVerificationStatus).toBe("review");
+    expect(updated.verificationStatus).toBe("review");
   });
 });

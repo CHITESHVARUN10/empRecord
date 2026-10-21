@@ -31,6 +31,32 @@ export type AttachmentKind = (typeof ATTACHMENT_KINDS)[number];
 
 export const MANDATORY_ATTACHMENTS = ['aadhaar', 'pan'] as const;
 
+export const DOCUMENT_VERIFICATION_STATUSES = [
+  'pending',
+  'verified',
+  'review',
+] as const;
+export type DocumentVerificationStatus =
+  (typeof DOCUMENT_VERIFICATION_STATUSES)[number];
+
+export const VERIFICATION_STATUSES = ['pending', 'review', 'done'] as const;
+export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
+
+export const DOCUMENT_VERIFICATION_STATUS_LABELS: Record<
+  DocumentVerificationStatus,
+  string
+> = {
+  pending: 'Pending',
+  verified: 'Verified',
+  review: 'Review',
+};
+
+export const VERIFICATION_STATUS_LABELS: Record<VerificationStatus, string> = {
+  pending: 'Pending',
+  review: 'Review required',
+  done: 'Done',
+};
+
 export const DEFAULT_NATIONALITY = 'Indian';
 
 export const MAX_FILE_SIZE_MB = 5;

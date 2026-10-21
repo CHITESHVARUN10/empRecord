@@ -11,3 +11,9 @@ backend/bpin-employee-records-*.json
 .tsbuildinfo
 .uploads/
 HANDOFF.md
+commandcode/
+.commandcode
+.ocr/
+.ocr/
+ocr/
+testing/
