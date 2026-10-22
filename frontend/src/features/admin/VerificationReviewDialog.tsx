@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck } from 'lucide-react';
+import { Copy, ShieldCheck } from 'lucide-react';
 import { Banner } from '../../components/Banner';
 import { Dialog } from '../../components/Dialog';
 import { TextAreaField, TextField } from '../../components/Field';
@@ -49,6 +49,7 @@ export function VerificationReviewDialog({
   const [pendingAction, setPendingAction] = useState<'save' | 'done' | null>(
     null,
   );
+  const [copyConfirmOpen, setCopyConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -56,6 +57,7 @@ export function VerificationReviewDialog({
     setFieldErrors({});
     setFormError(undefined);
     setPendingAction(null);
+    setCopyConfirmOpen(false);
   }, [employee, open]);
 
   const save = useMutation({
@@ -115,13 +117,33 @@ export function VerificationReviewDialog({
     save.mutate({ markVerified });
   }
 
+  function copyEnteredNumbers() {
+    setValues((current) => ({
+      ...current,
+      aadhaarNumberFromFile: current.aadhaarNumber,
+      panNumberFromFile: current.panNumber,
+    }));
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next.aadhaarNumberFromFile;
+      delete next.panNumberFromFile;
+      return next;
+    });
+    setFormError(undefined);
+    setCopyConfirmOpen(false);
+  }
+
   const busy = save.isPending;
 
   return (
+    <>
     <Dialog
       open={open}
       onClose={() => {
-        if (!busy) onClose();
+        if (!busy) {
+          setCopyConfirmOpen(false);
+          onClose();
+        }
       }}
       title="Review document verification"
       footer={
@@ -253,6 +275,21 @@ export function VerificationReviewDialog({
           </div>
         </div>
 
+        <div className="verification-review__copy-row">
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            onClick={() => setCopyConfirmOpen(true)}
+            disabled={busy}
+          >
+            <Copy size={15} aria-hidden="true" />
+            Copy entered numbers
+          </button>
+          <span>
+            Use this only after manually checking the uploaded documents.
+          </span>
+        </div>
+
         <TextAreaField
           label="Verification notes"
           value={values.verificationNotes}
@@ -267,5 +304,41 @@ export function VerificationReviewDialog({
         />
       </div>
     </Dialog>
+    <Dialog
+      open={copyConfirmOpen}
+      onClose={() => setCopyConfirmOpen(false)}
+      title="Confirm manual document check"
+      footer={
+        <>
+          <button
+            type="button"
+            className="btn btn--secondary"
+            onClick={() => setCopyConfirmOpen(false)}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={copyEnteredNumbers}
+          >
+            <Copy size={16} aria-hidden="true" />
+            Copy &amp; confirm
+          </button>
+        </>
+      }
+    >
+      <p>
+        You are confirming that you manually checked the uploaded Aadhaar and
+        PAN documents and that the numbers printed on those documents match
+        the numbers entered by the employee.
+      </p>
+      <p>
+        The employee-entered Aadhaar and PAN numbers will be copied into the
+        “read from file” fields. <strong>Name as per Aadhaar</strong> will not
+        be changed; type it manually if it is known, or leave it blank.
+      </p>
+    </Dialog>
+    </>
   );
 }
