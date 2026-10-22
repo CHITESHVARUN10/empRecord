@@ -664,6 +664,12 @@
   letter-spacing: 0.04em;
 }
 
+.text-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Attachments */
 .attachment-list {
   display: grid;

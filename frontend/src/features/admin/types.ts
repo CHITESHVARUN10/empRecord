@@ -45,7 +45,10 @@ export type EmployeeDetail = EmployeeInput & {
     aadhaar: AttachmentInfo | null;
     pan: AttachmentInfo | null;
     passport: AttachmentInfo | null;
+    offerLetter: AttachmentInfo | null;
+    appointmentLetter: AttachmentInfo | null;
   };
+  iraEmployeeId: string | null;
   nameAsPerAadhaar: string;
   aadhaarNumberFromFile: string;
   panNumberFromFile: string;

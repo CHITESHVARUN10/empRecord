@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  ATTACHMENT_KINDS,
   ATTACHMENT_LABELS,
   type AttachmentKind,
 } from '@bpi/shared';
@@ -36,7 +37,7 @@ export function AttachmentPanel({ attachments }: AttachmentPanelProps) {
       </div>
 
       <div className="attachment-list">
-        {(['aadhaar', 'pan', 'passport'] as const).map((kind) => {
+        {ATTACHMENT_KINDS.map((kind) => {
           const attachment = attachments[kind];
           const label = ATTACHMENT_LABELS[kind];
           return (

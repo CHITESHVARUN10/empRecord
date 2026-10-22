@@ -193,6 +193,13 @@ export function hasDraftContent(values: EmployeeInput): boolean {
       values.personalMobile ||
       values.aadhaarNumber ||
       values.panNumber ||
+      values.designation ||
+      values.ira ||
+      values.bankName ||
+      values.accountNo ||
+      values.ifscCode ||
+      values.uanNo ||
+      values.receiverCode ||
       values.permanentAddress?.line,
   );
 }

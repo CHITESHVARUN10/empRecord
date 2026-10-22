@@ -25,6 +25,13 @@ const columns = [
   { key: "passportNumber", header: "Passport Number" },
   { key: "department", header: "Department" },
   { key: "joiningDate", header: "Joining Date" },
+  { key: "designation", header: "Designation" },
+  { key: "ira", header: "IRA" },
+  { key: "bankName", header: "Bank Name" },
+  { key: "accountNo", header: "Account No" },
+  { key: "ifscCode", header: "IFSC Code" },
+  { key: "uanNo", header: "UAN No" },
+  { key: "receiverCode", header: "Receiver Code As Per Bank" },
   { key: "permanentAddressLine", header: "Permanent Address" },
   { key: "permanentState", header: "Permanent State" },
   { key: "permanentCity", header: "Permanent City" },
@@ -44,6 +51,8 @@ const columns = [
   { key: "aadhaarAttachment", header: "Aadhaar Attachment" },
   { key: "panAttachment", header: "PAN Attachment" },
   { key: "passportAttachment", header: "Passport Attachment" },
+  { key: "offerLetterAttachment", header: "Offer Letter Attachment" },
+  { key: "appointmentLetterAttachment", header: "Appointment Letter Attachment" },
   { key: "submittedAt", header: "Submitted At" },
   { key: "updatedAt", header: "Last Updated At" }
 ];
@@ -117,6 +126,13 @@ function employeeCsvRow(employee, baseUrl) {
     passportNumber: safeCell(employee.passportNumber ?? ""),
     department: safeCell(employee.department),
     joiningDate: safeCell(formatDateOnly(employee.joiningDate)),
+    designation: safeCell(employee.designation ?? ""),
+    ira: safeCell(employee.ira ?? ""),
+    bankName: safeCell(employee.bankName ?? ""),
+    accountNo: safeCell(employee.accountNo ?? ""),
+    ifscCode: safeCell(employee.ifscCode ?? ""),
+    uanNo: safeCell(employee.uanNo ?? ""),
+    receiverCode: safeCell(employee.receiverCode ?? ""),
     permanentAddressLine: safeCell(employee.permanentAddress.line),
     permanentState: safeCell(employee.permanentAddress.state),
     permanentCity: safeCell(employee.permanentAddress.city),
@@ -146,6 +162,18 @@ function employeeCsvRow(employee, baseUrl) {
       baseUrl,
       "passport"
     ),
+    offerLetterAttachment: attachmentLink(
+      employee,
+      id,
+      baseUrl,
+      "offerLetter"
+    ),
+    appointmentLetterAttachment: attachmentLink(
+      employee,
+      id,
+      baseUrl,
+      "appointmentLetter"
+    ),
     submittedAt: safeCell(formatTimestamp(employee.createdAt)),
     updatedAt: safeCell(formatTimestamp(employee.updatedAt))
   };
@@ -161,7 +189,9 @@ function buildEmployeeCsv(employees, baseUrl) {
 const attachmentColumns = [
   ["aadhaar", "Aadhaar"],
   ["pan", "PAN"],
-  ["passport", "Passport"]
+  ["passport", "Passport"],
+  ["offerLetter", "Offer Letter"],
+  ["appointmentLetter", "Appointment Letter"]
 ];
 function buildEmployeeDetailsCsv(employee, baseUrl) {
   const values = employeeCsvRow(employee, baseUrl);

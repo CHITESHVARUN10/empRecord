@@ -38,6 +38,13 @@ function normalizeEmployeeInput(input) {
     aadhaarNumber: normalizeAadhaar(input.aadhaarNumber),
     panNumber: normalizePan(input.panNumber),
     passportNumber: input.passportNumber?.trim() ? input.passportNumber.trim().toUpperCase() : "",
+    designation: input.designation?.trim() ?? "",
+    ira: input.ira?.trim() ?? "",
+    bankName: input.bankName?.trim() ?? "",
+    accountNo: input.accountNo?.trim() ?? "",
+    ifscCode: input.ifscCode?.trim().toUpperCase() ?? "",
+    uanNo: input.uanNo?.trim() ?? "",
+    receiverCode: input.receiverCode?.trim() ?? "",
     officeMobile: normalizeMobile(input.officeMobile),
     officeEmail: input.officeEmail?.trim() ? normalizeEmail(input.officeEmail) : "",
     personalMobile: normalizeMobile(input.personalMobile),
@@ -186,7 +193,13 @@ async function createEmployee(input) {
     const attachments = {
       aadhaar: input.attachments.aadhaar,
       pan: input.attachments.pan,
-      ...input.attachments.passport ? { passport: input.attachments.passport } : {}
+      ...input.attachments.passport ? { passport: input.attachments.passport } : {},
+      ...input.attachments.offerLetter
+        ? { offerLetter: input.attachments.offerLetter }
+        : {},
+      ...input.attachments.appointmentLetter
+        ? { appointmentLetter: input.attachments.appointmentLetter }
+        : {}
     };
     const employee = new EmployeeModel({
       _id: input.employeeId,
@@ -215,6 +228,30 @@ async function updateEmployee(input) {
   }
   const normalized = normalizeEmployeeInput(input.input);
   await assertNoDuplicates(normalized, input.id);
+  let linkedIraName;
+  if (input.iraEmployeeId !== void 0) {
+    if (input.iraEmployeeId) {
+      if (!Types.ObjectId.isValid(input.iraEmployeeId)) {
+        throw new HttpError(400, "VALIDATION_ERROR", "Select a valid IRA employee.", {
+          fields: { iraEmployeeId: "Select a valid employee." }
+        });
+      }
+      if (String(input.iraEmployeeId) === String(input.id)) {
+        throw new HttpError(400, "VALIDATION_ERROR", "An employee cannot be their own IRA.", {
+          fields: { iraEmployeeId: "Select a different employee." }
+        });
+      }
+      const linkedEmployee = await EmployeeModel.findById(input.iraEmployeeId)
+        .select("fullName")
+        .lean();
+      if (!linkedEmployee) {
+        throw new HttpError(400, "VALIDATION_ERROR", "The selected IRA employee was not found.", {
+          fields: { iraEmployeeId: "Select an existing employee." }
+        });
+      }
+      linkedIraName = linkedEmployee.fullName;
+    }
+  }
   const previousAadhaar = employee.aadhaarNumber;
   const previousPan = employee.panNumber;
   let verificationChanged = false;
@@ -236,7 +273,7 @@ async function updateEmployee(input) {
       employee.panVerificationStatus = "pending";
       verificationChanged = true;
     } else {
-      employee.attachments.passport = meta;
+      employee.attachments[kind] = meta;
     }
   }
   if (input.removePassport && !input.newAttachments.passport) {
@@ -260,6 +297,14 @@ async function updateEmployee(input) {
     );
   }
   employee.set(normalized);
+  if (input.iraEmployeeId !== void 0) {
+    if (input.iraEmployeeId) {
+      employee.iraEmployeeId = new Types.ObjectId(input.iraEmployeeId);
+      employee.ira = linkedIraName ?? employee.ira;
+    } else {
+      employee.iraEmployeeId = null;
+    }
+  }
   if (employee.aadhaarNumber !== previousAadhaar) {
     employee.aadhaarVerificationStatus = deriveDocumentVerificationStatus(
       "aadhaar",
@@ -363,9 +408,7 @@ async function updateEmployeeVerification(input) {
   return employee;
 }
 function attachmentMetaFor(employee, kind) {
-  if (kind === "aadhaar") return employee.attachments?.aadhaar;
-  if (kind === "pan") return employee.attachments?.pan;
-  return employee.attachments?.passport;
+  return employee.attachments?.[kind];
 }
 async function deleteEmployee(id) {
   const employee = await EmployeeModel.findById(id).lean();

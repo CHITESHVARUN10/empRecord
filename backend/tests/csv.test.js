@@ -24,6 +24,20 @@ function csvEmployee(overrides = {}) {
         mimeType: "image/jpeg",
         size: 4321,
         uploadedAt: /* @__PURE__ */ new Date("2026-01-01T00:00:00Z")
+      },
+      offerLetter: {
+        pathname: `${id}/offerLetter.pdf`,
+        originalName: "offer-letter.pdf",
+        mimeType: "application/pdf",
+        size: 777,
+        uploadedAt: /* @__PURE__ */ new Date("2026-01-01T00:00:00Z")
+      },
+      appointmentLetter: {
+        pathname: `${id}/appointmentLetter.pdf`,
+        originalName: "appointment-letter.pdf",
+        mimeType: "application/pdf",
+        size: 888,
+        uploadedAt: /* @__PURE__ */ new Date("2026-01-01T00:00:00Z")
       }
     },
     identifiers: [],
@@ -46,6 +60,15 @@ describe("CSV export", () => {
     expect(csv).toContain("Aadhaar No (File)");
     expect(csv).toContain("PAN No (File)");
     expect(csv).toContain("Verification Status");
+    expect(csv).toContain("Designation");
+    expect(csv).toContain("IRA");
+    expect(csv).toContain("Bank Name");
+    expect(csv).toContain("Account No");
+    expect(csv).toContain("IFSC Code");
+    expect(csv).toContain("UAN No");
+    expect(csv).toContain("Receiver Code As Per Bank");
+    expect(csv).toContain("Offer Letter Attachment");
+    expect(csv).toContain("Appointment Letter Attachment");
     expect(csv).toContain("'=EVIL()");
     expect(csv).toContain("01-01-1990");
     expect(csv).toContain("01-01-2020");
@@ -54,6 +77,12 @@ describe("CSV export", () => {
     );
     expect(csv).toContain(
       `http://localhost:5050/api/public/employees/${id}/attachments/pan`
+    );
+    expect(csv).toContain(
+      `http://localhost:5050/api/public/employees/${id}/attachments/offerLetter`
+    );
+    expect(csv).toContain(
+      `http://localhost:5050/api/public/employees/${id}/attachments/appointmentLetter`
     );
     expect(csv).toContain("01-01-2026 15:30 IST");
   });
@@ -90,12 +119,44 @@ describe("CSV export", () => {
     expect(csv).toContain("Verified,Review,Review required");
     expect(csv).toContain("PAN needs admin review");
   });
-  it("leaves the joining date blank when it is not provided", () => {
+  it("leaves optional employment fields blank when not provided", () => {
     const csv = buildEmployeeCsv(
       [csvEmployee({ joiningDate: "" })],
       "http://localhost:5050"
     );
-    expect(csv).toContain("Sales,,1 Test Lane");
+    const [headerLine, valueLine] = csv.trim().split("\n");
+    const headers = headerLine.replace(/^\uFEFF/, "").split(",");
+    const values = valueLine.split(",");
+    for (const header of [
+      "Joining Date",
+      "Designation",
+      "IRA",
+      "Bank Name",
+      "Account No",
+      "IFSC Code",
+      "UAN No",
+      "Receiver Code As Per Bank",
+    ]) {
+      expect(values[headers.indexOf(header)]).toBe("");
+    }
+  });
+  it("exports employment and bank details", () => {
+    const employee = csvEmployee({
+      designation: "Service Engineer",
+      ira: "Ramesh Kasaveni",
+      bankName: "State Bank of India",
+      accountNo: "123456789012",
+      ifscCode: "SBIN0001234",
+      uanNo: "123456789012",
+      receiverCode: "RC-001",
+    });
+    const csv = buildEmployeeCsv([employee], "http://localhost:5050");
+    expect(csv).toContain("Service Engineer");
+    expect(csv).toContain("Ramesh Kasaveni");
+    expect(csv).toContain("State Bank of India");
+    expect(csv).toContain("123456789012");
+    expect(csv).toContain("SBIN0001234");
+    expect(csv).toContain("RC-001");
   });
   it("writes a header when there are no records", () => {
     const csv = buildEmployeeCsv([], "http://localhost:5050");
@@ -128,6 +189,10 @@ describe("CSV export", () => {
     expect(csv).toContain("Aadhaar Original File Name");
     expect(csv).toContain("aadhaar.pdf");
     expect(csv).toContain("PAN MIME Type");
+    expect(csv).toContain("Offer Letter Original File Name");
+    expect(csv).toContain("offer-letter.pdf");
+    expect(csv).toContain("Appointment Letter Original File Name");
+    expect(csv).toContain("appointment-letter.pdf");
     expect(csv).toContain("Emergency Contact Mobile");
     expect(csv).not.toContain("Google Drive Folder");
     expect(csv).not.toContain("drive.google.com");

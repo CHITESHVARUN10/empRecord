@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import type { AttachmentKind } from '@bpi/shared';
 import { Banner } from '../../components/Banner';
 import { DepartmentBadge } from '../../components/DepartmentBadge';
 import { Dialog } from '../../components/Dialog';
@@ -130,7 +131,7 @@ export default function EmployeeDetailPage() {
   if (!query.data) return null;
   const employee = query.data;
   const attachments = employee.attachments as Record<
-    'aadhaar' | 'pan' | 'passport',
+    AttachmentKind,
     AttachmentInfo | null
   >;
 
@@ -247,6 +248,60 @@ export default function EmployeeDetailPage() {
                   <span className="mono-value">
                     {employee.passportNumber}
                   </span>
+                ) : (
+                  'Not provided'
+                )}
+              </Definition>
+            </dl>
+          </section>
+
+          <section className="detail-panel">
+            <div className="detail-panel__head">
+              <h2>Employment and bank details</h2>
+            </div>
+            <dl className="definition-grid">
+              <Definition label="Designation">
+                {employee.designation || 'Not provided'}
+              </Definition>
+              <Definition label="IRA (Immediate Reporting Authority)">
+                {employee.iraEmployeeId ? (
+                  <Link
+                    to={`/admin/employees/${employee.iraEmployeeId}`}
+                    className="text-link"
+                  >
+                    {employee.ira || 'Linked employee'}
+                  </Link>
+                ) : (
+                  employee.ira || 'Not provided'
+                )}
+              </Definition>
+              <Definition label="Bank name">
+                {employee.bankName || 'Not provided'}
+              </Definition>
+              <Definition label="Account number">
+                {employee.accountNo ? (
+                  <span className="mono-value">{employee.accountNo}</span>
+                ) : (
+                  'Not provided'
+                )}
+              </Definition>
+              <Definition label="IFSC code">
+                {employee.ifscCode ? (
+                  <span className="mono-value">{employee.ifscCode}</span>
+                ) : (
+                  'Not provided'
+                )}
+              </Definition>
+              <Definition label="UAN number">
+                {employee.uanNo ? (
+                  <span className="mono-value">{employee.uanNo}</span>
+                ) : (
+                  'Not provided'
+                )}
+              </Definition>
+              <Definition label="Receiver code as per bank">
+                {employee.receiverCode ? (
+                  <span className="mono-value">{employee.receiverCode}</span>
                 ) : (
                   'Not provided'
                 )}

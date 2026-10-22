@@ -28,6 +28,13 @@ export const defaultEmployeeValues: EmployeeInput = {
   passportNumber: '',
   department: '' as EmployeeInput['department'],
   joiningDate: '',
+  designation: '',
+  ira: '',
+  bankName: '',
+  accountNo: '',
+  ifscCode: '',
+  uanNo: '',
+  receiverCode: '',
   permanentAddress: {
     line: '',
     state: '',

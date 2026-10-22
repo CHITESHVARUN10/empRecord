@@ -487,11 +487,9 @@ function collectSessionPathnames(session) {
 }
 async function isPathLinkedToEmployee(pathname) {
   const employee = await EmployeeModel.exists({
-    $or: [
-      { "attachments.aadhaar.pathname": pathname },
-      { "attachments.pan.pathname": pathname },
-      { "attachments.passport.pathname": pathname }
-    ]
+    $or: ATTACHMENT_KINDS.map((kind) => ({
+      [`attachments.${kind}.pathname`]: pathname
+    }))
   });
   return Boolean(employee);
 }

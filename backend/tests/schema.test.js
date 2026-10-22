@@ -132,6 +132,48 @@ describe("employeeSchema", () => {
     expect(paths).toContain("officeEmail");
     expect(paths).toContain("passportNumber");
   });
+  it("accepts blank optional employment and bank fields", () => {
+    expect(
+      employeeSchema.safeParse(
+        validEmployee({
+          designation: "",
+          ira: "",
+          bankName: "",
+          accountNo: "",
+          ifscCode: "",
+          uanNo: "",
+          receiverCode: ""
+        })
+      ).success
+    ).toBe(true);
+  });
+  it("accepts valid employment and bank fields", () => {
+    expect(
+      employeeSchema.safeParse(
+        validEmployee({
+          designation: "Service Engineer",
+          ira: "Ramesh Kasaveni",
+          bankName: "State Bank of India",
+          accountNo: "123456789012",
+          ifscCode: "SBIN0001234",
+          uanNo: "123456789012",
+          receiverCode: "RC-001"
+        })
+      ).success
+    ).toBe(true);
+  });
+  it("rejects invalid optional employment and bank values", () => {
+    const paths = issuePaths(
+      validEmployee({
+        accountNo: "123",
+        ifscCode: "INVALID",
+        uanNo: "123"
+      })
+    );
+    expect(paths).toContain("accountNo");
+    expect(paths).toContain("ifscCode");
+    expect(paths).toContain("uanNo");
+  });
   it("rejects a code with spaces and an unknown state", () => {
     const paths = issuePaths(
       validEmployee({

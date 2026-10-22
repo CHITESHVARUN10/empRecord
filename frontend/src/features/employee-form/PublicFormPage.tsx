@@ -8,6 +8,7 @@ import {
 } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  ATTACHMENT_KINDS,
   employeeSchema,
   type AttachmentKind,
   type EmployeeInput,
@@ -151,7 +152,17 @@ function isComplete(
       values.emergencyContact?.mobile?.trim(),
   );
 
-  return { personal, identity, address, emergency };
+  const employment = Boolean(
+    values.designation?.trim() ||
+      values.ira?.trim() ||
+      values.bankName?.trim() ||
+      values.accountNo?.trim() ||
+      values.ifscCode?.trim() ||
+      values.uanNo?.trim() ||
+      values.receiverCode?.trim(),
+  );
+
+  return { personal, identity, address, emergency, employment };
 }
 
 function prefersReducedMotion(): boolean {
@@ -501,9 +512,9 @@ export function PublicFormPage() {
         Object.keys(prepared.errors).length > 0 ||
         !prepared.session
       ) {
-        const firstKind = (
-          ['aadhaar', 'pan', 'passport'] as const
-        ).find((kind) => prepared.errors[kind]);
+        const firstKind = ATTACHMENT_KINDS.find(
+          (kind) => prepared.errors[kind],
+        );
         if (firstKind) scrollToField(`attachments.${firstKind}`);
         setServerMessage(
           'The record was not submitted because a document did not finish uploading. Your form and documents are saved on this device. Retry the upload and submit again.',
@@ -517,6 +528,15 @@ export function PublicFormPage() {
         pan: prepared.documents.pan?.pathname,
         ...(prepared.documents.passport
           ? { passport: prepared.documents.passport.pathname }
+          : {}),
+        ...(prepared.documents.offerLetter
+          ? { offerLetter: prepared.documents.offerLetter.pathname }
+          : {}),
+        ...(prepared.documents.appointmentLetter
+          ? {
+              appointmentLetter:
+                prepared.documents.appointmentLetter.pathname,
+            }
           : {}),
       };
 

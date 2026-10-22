@@ -26,7 +26,13 @@ export const BLOOD_GROUPS = [
 ] as const;
 export type BloodGroup = (typeof BLOOD_GROUPS)[number];
 
-export const ATTACHMENT_KINDS = ['aadhaar', 'pan', 'passport'] as const;
+export const ATTACHMENT_KINDS = [
+  'aadhaar',
+  'pan',
+  'passport',
+  'offerLetter',
+  'appointmentLetter',
+] as const;
 export type AttachmentKind = (typeof ATTACHMENT_KINDS)[number];
 
 export const MANDATORY_ATTACHMENTS = ['aadhaar', 'pan'] as const;
@@ -75,6 +81,8 @@ export const ATTACHMENT_LABELS: Record<AttachmentKind, string> = {
   aadhaar: 'Aadhaar',
   pan: 'PAN',
   passport: 'Passport',
+  offerLetter: 'Offer letter',
+  appointmentLetter: 'Appointment / confirmation letter',
 };
 
 export const DUPLICATE_FIELD_LABELS = {

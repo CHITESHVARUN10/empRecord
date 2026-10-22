@@ -59,10 +59,13 @@ const kindSchema = z.enum(ATTACHMENT_KINDS);
 const updateAttachmentPathsSchema = z.object({
   aadhaar: z.string().min(1).max(1024).optional(),
   pan: z.string().min(1).max(1024).optional(),
-  passport: z.string().min(1).max(1024).optional()
+  passport: z.string().min(1).max(1024).optional(),
+  offerLetter: z.string().min(1).max(1024).optional(),
+  appointmentLetter: z.string().min(1).max(1024).optional()
 }).strict();
 const updateBodySchema = z.object({
   data: z.unknown(),
+  iraEmployeeId: z.string().regex(/^[a-fA-F0-9]{24}$/).nullable().optional(),
   uploadSessionId: z.string().uuid().optional(),
   attachments: updateAttachmentPathsSchema.optional(),
   removePassport: z.boolean().optional().default(false)
@@ -206,7 +209,8 @@ adminRoutes.patch("/employees/:id", async (request, response) => {
       id,
       input: data,
       newAttachments: {},
-      removePassport: body.removePassport
+      removePassport: body.removePassport,
+      iraEmployeeId: body.iraEmployeeId
     });
     const fresh2 = await EmployeeModel.findById(id).lean();
     response.json(serializeEmployeeDetail(fresh2 ?? employee2));
@@ -242,7 +246,8 @@ adminRoutes.patch("/employees/:id", async (request, response) => {
     id,
     input: data,
     newAttachments,
-    removePassport: body.removePassport
+    removePassport: body.removePassport,
+    iraEmployeeId: body.iraEmployeeId
   });
   await finalizeUploadSession(
     session,

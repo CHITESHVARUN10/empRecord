@@ -232,6 +232,29 @@ describe("upload sessions", () => {
     expect(session.pending.aadhaar).toBeUndefined();
     expect(session.documents.aadhaar).toBeUndefined();
   });
+  it("accepts the optional offer and appointment letters", async () => {
+    const view = await createPublicUploadSession();
+    for (const kind of ["offerLetter", "appointmentLetter"]) {
+      const pathname = pathFor(view.pathPrefix, kind, "pdf");
+      await issueUploadToken({
+        sessionId: view.sessionId,
+        kind,
+        pathname,
+        size: 20,
+        mimeType: "application/pdf",
+        originalName: `${kind}.pdf`
+      });
+      const document = await confirmPendingUpload({
+        sessionId: view.sessionId,
+        kind,
+        pathname
+      });
+      expect(document.kind).toBe(kind);
+    }
+    const status = await getUploadSessionStatus(view.sessionId);
+    expect(status.documents.offerLetter).toBeDefined();
+    expect(status.documents.appointmentLetter).toBeDefined();
+  });
   it("requires admin ownership for edit sessions", async () => {
     const employeeId = new Types.ObjectId().toString();
     const view = await createEditUploadSession(employeeId, "admin-1");

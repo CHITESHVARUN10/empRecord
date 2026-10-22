@@ -246,6 +246,64 @@
   text-transform: uppercase;
 }
 
+.form-subheading__note {
+  margin: -6px 0 12px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.ira-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ira-field .input {
+  flex: 1;
+}
+
+.ira-results {
+  z-index: 20;
+  overflow: hidden;
+  margin-top: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-bar);
+}
+
+.ira-results__note {
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.ira-results__item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ira-results__item:hover,
+.ira-results__item:focus-visible {
+  background: var(--surface-2);
+}
+
+.ira-results__code {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+}
+
 .form-subsection {
   padding-top: 24px;
   border-top: 1px solid var(--line);

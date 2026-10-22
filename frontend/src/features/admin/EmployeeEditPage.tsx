@@ -34,6 +34,7 @@ import type { EmployeeDetail } from './types';
 
 type SavePayload = {
   data: EmployeeInput;
+  iraEmployeeId: string | null;
   uploadSessionId?: string;
   attachments?: Partial<Record<AttachmentKind, string>>;
   removePassport: boolean;
@@ -81,6 +82,13 @@ function toFormValues(employee: EmployeeDetail): EmployeeInput {
     passportNumber: employee.passportNumber ?? '',
     department: employee.department,
     joiningDate: employee.joiningDate,
+    designation: employee.designation ?? '',
+    ira: employee.ira ?? '',
+    bankName: employee.bankName ?? '',
+    accountNo: employee.accountNo ?? '',
+    ifscCode: employee.ifscCode ?? '',
+    uanNo: employee.uanNo ?? '',
+    receiverCode: employee.receiverCode ?? '',
     permanentAddress: { ...employee.permanentAddress },
     officeMobile: employee.officeMobile,
     officeEmail: employee.officeEmail ?? '',
@@ -115,6 +123,9 @@ function EditForm({ employee }: { employee: EmployeeDetail }) {
   const [fileErrors, setFileErrors] = useState<
     Partial<Record<AttachmentKind, string>>
   >({});
+  const [iraEmployeeId, setIraEmployeeId] = useState<string | null>(
+    employee.iraEmployeeId,
+  );
   const [passportRemoved, setPassportRemoved] = useState(false);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [formError, setFormError] = useState<string>();
@@ -138,10 +149,16 @@ function EditForm({ employee }: { employee: EmployeeDetail }) {
     aadhaar: employee.attachments.aadhaar ?? undefined,
     pan: employee.attachments.pan ?? undefined,
     passport: employee.attachments.passport ?? undefined,
+    offerLetter: employee.attachments.offerLetter ?? undefined,
+    appointmentLetter:
+      employee.attachments.appointmentLetter ?? undefined,
   };
 
   const hasChanges =
-    isDirty || Object.keys(files).length > 0 || passportRemoved;
+    isDirty ||
+    Object.keys(files).length > 0 ||
+    passportRemoved ||
+    iraEmployeeId !== employee.iraEmployeeId;
 
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
@@ -218,6 +235,7 @@ function EditForm({ employee }: { employee: EmployeeDetail }) {
 
       const payload: SavePayload = {
         data: values,
+        iraEmployeeId,
         removePassport:
           passportRemoved && !prepared.documents.passport,
       };
@@ -358,6 +376,9 @@ function EditForm({ employee }: { employee: EmployeeDetail }) {
             passportRemoved={passportRemoved}
             onRemovePassport={() => setPassportRemoved(true)}
             duplicateConflicts={conflicts}
+            currentEmployeeId={employee.id}
+            iraEmployeeId={iraEmployeeId}
+            onIraEmployeeIdChange={setIraEmployeeId}
           />
 
           <div className="edit-savebar">

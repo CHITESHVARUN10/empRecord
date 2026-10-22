@@ -6,6 +6,7 @@ export const FORM_SECTIONS = [
   { id: 'identity', number: '02', label: 'Identity documents' },
   { id: 'address', number: '03', label: 'Address and contact' },
   { id: 'emergency', number: '04', label: 'Emergency contact' },
+  { id: 'employment', number: '05', label: 'Employment and bank details' },
 ] as const;
 
 export type FormSectionId = (typeof FORM_SECTIONS)[number]['id'];

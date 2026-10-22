@@ -72,6 +72,16 @@ function serializeEmployeeDetail(employee) {
     passportNumber: employee.passportNumber ?? "",
     department: employee.department,
     joiningDate: employee.joiningDate,
+    designation: employee.designation ?? "",
+    ira: employee.ira ?? "",
+    iraEmployeeId: employee.iraEmployeeId
+      ? String(employee.iraEmployeeId)
+      : null,
+    bankName: employee.bankName ?? "",
+    accountNo: employee.accountNo ?? "",
+    ifscCode: employee.ifscCode ?? "",
+    uanNo: employee.uanNo ?? "",
+    receiverCode: employee.receiverCode ?? "",
     permanentAddress: employee.permanentAddress,
     officeMobile: employee.officeMobile,
     officeEmail: employee.officeEmail ?? "",
@@ -87,6 +97,16 @@ function serializeEmployeeDetail(employee) {
         employee.attachments?.passport,
         id,
         "passport"
+      ),
+      offerLetter: serializeAttachment(
+        employee.attachments?.offerLetter,
+        id,
+        "offerLetter"
+      ),
+      appointmentLetter: serializeAttachment(
+        employee.attachments?.appointmentLetter,
+        id,
+        "appointmentLetter"
       )
     },
     nameAsPerAadhaar: employee.nameAsPerAadhaar ?? "",

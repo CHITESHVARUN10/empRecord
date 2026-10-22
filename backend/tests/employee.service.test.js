@@ -234,6 +234,123 @@ describe("employee duplicate handling", () => {
     expect(updated.aadhaarVerificationStatus).toBe("verified");
     expect(updated.verificationStatus).toBe("pending");
   });
+  it("updates employment and bank details", async () => {
+    const employee = await create();
+    const updated = await updateEmployee({
+      id: String(employee._id),
+      input: validEmployee({
+        designation: "Service Engineer",
+        ira: "Free Text Manager",
+        bankName: "State Bank of India",
+        accountNo: "123456789012",
+        ifscCode: "sbin0001234",
+        uanNo: "123456789012",
+        receiverCode: "RC-001"
+      }),
+      newAttachments: {},
+      removePassport: false
+    });
+    expect(updated.designation).toBe("Service Engineer");
+    expect(updated.ira).toBe("Free Text Manager");
+    expect(updated.bankName).toBe("State Bank of India");
+    expect(updated.accountNo).toBe("123456789012");
+    expect(updated.ifscCode).toBe("SBIN0001234");
+    expect(updated.uanNo).toBe("123456789012");
+    expect(updated.receiverCode).toBe("RC-001");
+    expect(updated.iraEmployeeId).toBeNull();
+  });
+  it("links IRA to another employee and falls back to free text", async () => {
+    const ira = await create(
+      validEmployee({
+        employeeCode: "BPI-200",
+        personalEmail: "ira@example.com",
+        personalMobile: "9876500011",
+        officeMobile: "9876500012"
+      })
+    );
+    const employee = await create(
+      validEmployee({
+        employeeCode: "BPI-201",
+        personalEmail: "employee@example.com",
+        personalMobile: "9876500013",
+        officeMobile: "9876500014"
+      })
+    );
+    const linked = await updateEmployee({
+      id: String(employee._id),
+      input: validEmployee({
+        employeeCode: "BPI-201",
+        personalEmail: "employee@example.com",
+        personalMobile: "9876500013",
+        officeMobile: "9876500014",
+        ira: "Typed override"
+      }),
+      newAttachments: {},
+      removePassport: false,
+      iraEmployeeId: String(ira._id)
+    });
+    expect(String(linked.iraEmployeeId)).toBe(String(ira._id));
+    expect(linked.ira).toBe(ira.fullName);
+
+    const freeText = await updateEmployee({
+      id: String(employee._id),
+      input: validEmployee({
+        employeeCode: "BPI-201",
+        personalEmail: "employee@example.com",
+        personalMobile: "9876500013",
+        officeMobile: "9876500014",
+        ira: "Free Text Manager"
+      }),
+      newAttachments: {},
+      removePassport: false,
+      iraEmployeeId: null
+    });
+    expect(freeText.iraEmployeeId).toBeNull();
+    expect(freeText.ira).toBe("Free Text Manager");
+  });
+  it("rejects an invalid or self IRA reference", async () => {
+    const employee = await create();
+    await expect(
+      updateEmployee({
+        id: String(employee._id),
+        input: validEmployee(),
+        newAttachments: {},
+        removePassport: false,
+        iraEmployeeId: String(employee._id)
+      })
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      updateEmployee({
+        id: String(employee._id),
+        input: validEmployee(),
+        newAttachments: {},
+        removePassport: false,
+        iraEmployeeId: "not-an-object-id"
+      })
+    ).rejects.toMatchObject({ status: 400 });
+  });
+  it("adds the optional offer and appointment letters", async () => {
+    const employee = await create();
+    const employeeId = String(employee._id);
+    const updated = await updateEmployee({
+      id: employeeId,
+      input: validEmployee({ fullName: "Updated Employee" }),
+      newAttachments: {
+        offerLetter: attachmentMeta(employeeId, "offerLetter"),
+        appointmentLetter: attachmentMeta(
+          employeeId,
+          "appointmentLetter"
+        )
+      },
+      removePassport: false
+    });
+    expect(updated.attachments.offerLetter.pathname).toBe(
+      `${employeeId}/offerLetter.jpg`
+    );
+    expect(updated.attachments.appointmentLetter.pathname).toBe(
+      `${employeeId}/appointmentLetter.jpg`
+    );
+  });
   it("marks both checks done after an admin review", async () => {
     const employee = await create();
     const updated = await updateEmployeeVerification({

@@ -87,7 +87,9 @@ function contentDisposition(filename, mode) {
 const attachmentPathsSchema = z.object({
   aadhaar: z.string().min(1).max(1024),
   pan: z.string().min(1).max(1024),
-  passport: z.string().min(1).max(1024).optional()
+  passport: z.string().min(1).max(1024).optional(),
+  offerLetter: z.string().min(1).max(1024).optional(),
+  appointmentLetter: z.string().min(1).max(1024).optional()
 }).strict();
 const submitBodySchema = z.object({
   data: z.unknown(),

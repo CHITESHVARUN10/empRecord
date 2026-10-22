@@ -46,12 +46,16 @@ const uploadSessionSchema = new Schema(
     documents: {
       aadhaar: { type: uploadDocumentSchema },
       pan: { type: uploadDocumentSchema },
-      passport: { type: uploadDocumentSchema }
+      passport: { type: uploadDocumentSchema },
+      offerLetter: { type: uploadDocumentSchema },
+      appointmentLetter: { type: uploadDocumentSchema }
     },
     pending: {
       aadhaar: { type: pendingUploadSchema },
       pan: { type: pendingUploadSchema },
-      passport: { type: pendingUploadSchema }
+      passport: { type: pendingUploadSchema },
+      offerLetter: { type: pendingUploadSchema },
+      appointmentLetter: { type: pendingUploadSchema }
     },
     cleanupPathnames: { type: [String], default: [] },
     expiresAt: { type: Date, required: true },

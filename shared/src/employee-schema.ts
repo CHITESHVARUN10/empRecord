@@ -16,6 +16,9 @@ const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 const PIN_RE = /^\d{6}$/;
 const PASSPORT_RE = /^[A-Z0-9]{6,12}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const IFSC_RE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const ACCOUNT_RE = /^\d{6,24}$/;
+const UAN_RE = /^\d{12}$/;
 
 export function isValidDateOnly(value: string): boolean {
   if (!DATE_RE.test(value)) return false;
@@ -169,6 +172,37 @@ export const employeeSchema = z
         (value) => !value || isValidDateOnly(value),
         'Enter a valid joining date',
       ),
+    designation: z.string().trim().max(100).optional(),
+    ira: z.string().trim().max(100).optional(),
+    bankName: z.string().trim().max(120).optional(),
+    accountNo: z
+      .string()
+      .trim()
+      .max(24)
+      .refine(
+        (value) => !value || ACCOUNT_RE.test(value),
+        'Enter a valid bank account number',
+      )
+      .optional(),
+    ifscCode: z
+      .string()
+      .trim()
+      .max(11)
+      .refine(
+        (value) => !value || IFSC_RE.test(value.toUpperCase()),
+        'Enter a valid IFSC code (for example ABCD0123456)',
+      )
+      .optional(),
+    uanNo: z
+      .string()
+      .trim()
+      .max(12)
+      .refine(
+        (value) => !value || UAN_RE.test(value),
+        'Enter a valid 12-digit UAN',
+      )
+      .optional(),
+    receiverCode: z.string().trim().max(30).optional(),
     permanentAddress: permanentAddressSchema,
     officeMobile: mobileField,
     officeEmail: optionalEmail,

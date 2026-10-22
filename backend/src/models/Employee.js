@@ -85,6 +85,24 @@ const employeeSchema = new Schema(
       trim: true,
       maxlength: 10
     },
+    designation: { type: String, default: "", trim: true, maxlength: 100 },
+    ira: { type: String, default: "", trim: true, maxlength: 100 },
+    iraEmployeeId: {
+      type: Schema.Types.ObjectId,
+      ref: "Employee",
+      default: null
+    },
+    bankName: { type: String, default: "", trim: true, maxlength: 120 },
+    accountNo: { type: String, default: "", trim: true, maxlength: 24 },
+    ifscCode: {
+      type: String,
+      default: "",
+      trim: true,
+      uppercase: true,
+      maxlength: 11
+    },
+    uanNo: { type: String, default: "", trim: true, maxlength: 12 },
+    receiverCode: { type: String, default: "", trim: true, maxlength: 30 },
     permanentAddress: { type: addressSchema, required: true },
     officeMobile: { type: String, required: true, trim: true, maxlength: 20 },
     officeEmail: {
@@ -107,7 +125,9 @@ const employeeSchema = new Schema(
     attachments: {
       aadhaar: { type: blobMetaSchema, required: true },
       pan: { type: blobMetaSchema, required: true },
-      passport: { type: blobMetaSchema }
+      passport: { type: blobMetaSchema },
+      offerLetter: { type: blobMetaSchema },
+      appointmentLetter: { type: blobMetaSchema }
     },
     nameAsPerAadhaar: {
       type: String,
